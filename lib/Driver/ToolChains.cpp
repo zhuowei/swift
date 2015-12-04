@@ -1319,6 +1319,184 @@ toolchains::GenericUnix::constructInvocation(const LinkJobAction &job,
 }
 
 ToolChain::InvocationInfo
+toolchains::Android::constructInvocation(const InterpretJobAction &job,
+                                             const JobContext &context) const {
+  InvocationInfo II = ToolChain::constructInvocation(job, context);
+
+  SmallString<128> runtimeLibraryPath;
+  getRuntimeLibraryPath(runtimeLibraryPath, context.Args, *this);
+
+  addPathEnvironmentVariableIfNeeded(II.ExtraEnvironment, "LD_LIBRARY_PATH",
+                                     ":", options::OPT_L, context.Args,
+                                     runtimeLibraryPath);
+  return II;
+}
+
+
+ToolChain::InvocationInfo
+toolchains::Android::constructInvocation(const AutolinkExtractJobAction &job,
+                                             const JobContext &context) const {
+  assert(context.Output.getPrimaryOutputType() == types::TY_AutolinkFile);
+
+  ArgStringList Arguments;
+  addPrimaryInputsOfType(Arguments, context.Inputs, types::TY_Object);
+  addInputsOfType(Arguments, context.InputActions, types::TY_Object);
+
+  Arguments.push_back("-o");
+  Arguments.push_back(
+      context.Args.MakeArgString(context.Output.getPrimaryOutputFilename()));
+
+  return {"swift-autolink-extract", Arguments};
+}
+
+ToolChain::InvocationInfo
+toolchains::Android::constructInvocation(const LinkJobAction &job,
+                                         const JobContext &context) const {
+  const Driver &D = getDriver();
+
+  assert(context.Output.getPrimaryOutputType() == types::TY_Image &&
+         "Invalid linker output type.");
+
+  ArgStringList Arguments;
+
+  switch (job.getKind()) {
+  case LinkKind::None:
+    llvm_unreachable("invalid link kind");
+  case LinkKind::Executable:
+    // Default case, nothing extra needed
+    break;
+  case LinkKind::DynamicLibrary:
+    Arguments.push_back("-shared");
+    break;
+  }
+
+  // Select the linker to use
+  StringRef Linker;
+
+  if (const Arg *A = context.Args.getLastArg(options::OPT_use_ld)) {
+    Linker = A->getValue();
+  } else {
+    switch(getTriple().getArch()) {
+    default:
+      break;
+    case llvm::Triple::arm:
+    case llvm::Triple::armeb:
+    case llvm::Triple::thumb:
+    case llvm::Triple::thumbeb:
+    // BFD linker has issues wrt relocation of the protocol conformance
+    // section on these targets, it also generates COPY relocations for
+    // final executables, as such, unless specified, we default to gold
+    // linker.
+      Linker = "gold";
+    }
+  }
+
+  if (!Linker.empty()) {
+    Arguments.push_back(context.Args.MakeArgString("-fuse-ld=" + Linker));
+  }
+
+  // Add the runtime library link path, which is platform-specific and found
+  // relative to the compiler.
+  // FIXME: Duplicated from CompilerInvocation, but in theory the runtime
+  // library link path and the standard library module import path don't
+  // need to be the same.
+  llvm::SmallString<128> RuntimeLibPath;
+
+  if (const Arg *A = context.Args.getLastArg(options::OPT_resource_dir)) {
+    RuntimeLibPath = A->getValue();
+  } else {
+    RuntimeLibPath = D.getSwiftProgramPath();
+    llvm::sys::path::remove_filename(RuntimeLibPath); // remove /swift
+    llvm::sys::path::remove_filename(RuntimeLibPath); // remove /bin
+    llvm::sys::path::append(RuntimeLibPath, "lib", "swift");
+  }
+  llvm::sys::path::append(RuntimeLibPath,
+                          getPlatformNameForTriple(getTriple()));
+
+ // On Linux and FreeBSD (really, ELF binaries) we need to add objects
+ // to provide markers and size for the metadata sections.
+  Arguments.push_back(context.Args.MakeArgString(
+    Twine(RuntimeLibPath) + "/" + getSectionMagicArch(getTriple()) + "/swift_begin.o"));
+  addPrimaryInputsOfType(Arguments, context.Inputs, types::TY_Object);
+  addInputsOfType(Arguments, context.InputActions, types::TY_Object);
+
+  context.Args.AddAllArgs(Arguments, options::OPT_Xlinker);
+  context.Args.AddAllArgs(Arguments, options::OPT_linker_option_Group);
+  context.Args.AddAllArgs(Arguments, options::OPT_F);
+
+  if (!context.OI.SDKPath.empty()) {
+    Arguments.push_back("--sysroot");
+    Arguments.push_back(context.Args.MakeArgString(context.OI.SDKPath));
+  }
+
+  Arguments.push_back("-L");
+  Arguments.push_back(context.Args.MakeArgString(RuntimeLibPath));
+
+  if (context.Args.hasArg(options::OPT_profile_generate)) {
+    SmallString<128> LibProfile(RuntimeLibPath);
+    llvm::sys::path::remove_filename(LibProfile); // remove platform name
+    llvm::sys::path::append(LibProfile, "clang", "lib");
+
+    llvm::sys::path::append(LibProfile, getTriple().getOSName(),
+                            Twine("libclang_rt.profile-") +
+                              getTriple().getArchName() +
+                              ".a");
+    Arguments.push_back(context.Args.MakeArgString(LibProfile));
+  }
+
+
+  // Explicitly set the linker target to "androideabi", as opposed to the
+  // llvm::Triple representation of "armv7-none-linux-android".
+  // This is the only ABI we currently support for Android.
+  Arguments.push_back("-target");
+  Arguments.push_back("armv7-none-linux-androideabi");
+
+  // "ANDROID_NDK_HOME" is set by the Swift build script. Still, emit a nice
+  // assertion message here for people building via CMake directly (even though
+  // this is not something we support).
+  const char *ndkhome = getenv("ANDROID_NDK_HOME");
+  assert(ndkhome && "Environment variable ANDROID_NDK_HOME needs to be set "
+    "when building Swift to target Android. It should point to the directory "
+    "where the Android NDK has been installed, such as "
+    "/usr/local/opt/android-ndk-r10e.");
+
+  // Link libgcc and libc++.
+  // FIXME: This ties the Android driver to the tree layout of Android's NDK,
+  //        which is undesirable. It may be better to allow the build script
+  //        to specify a path to these instead. This would also allow a
+  //        different libc++ from within the Android NDK to be specified. 
+  Arguments.push_back("-L");
+  Arguments.push_back(context.Args.MakeArgString(
+    Twine(ndkhome) + "/toolchains/arm-linux-androideabi-4.8/prebuilt/"
+    "linux-x86_64/lib/gcc/arm-linux-androideabi/4.8"));
+  Arguments.push_back("-L");
+  Arguments.push_back(context.Args.MakeArgString(
+    Twine(ndkhome) + "/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a"));
+
+  // Always add the stdlib
+  Arguments.push_back("-lswiftCore");
+
+  // Add any autolinking scripts to the arguments
+  for (const Job *Cmd : context.Inputs) {
+    auto &OutputInfo = Cmd->getOutput();
+    if (OutputInfo.getPrimaryOutputType() == types::TY_AutolinkFile)
+      Arguments.push_back(context.Args.MakeArgString(
+        Twine("@") + OutputInfo.getPrimaryOutputFilename()));
+  }
+
+  // It is important that swift_end.o be the last object on the link line
+  // therefore, it is included just before the output filename.
+  Arguments.push_back(context.Args.MakeArgString(
+    Twine(RuntimeLibPath) + "/" + getSectionMagicArch(getTriple()) + "/swift_end.o"));
+
+  // This should be the last option, for convenience in checking output.
+  Arguments.push_back("-o");
+  Arguments.push_back(context.Output.getPrimaryOutputFilename().c_str());
+
+  return {"clang++", Arguments};
+}
+
+ToolChain::InvocationInfo
 toolchains::Windows::constructInvocation(const InterpretJobAction &job,
                                          const JobContext &context) const {
   InvocationInfo II = ToolChain::constructInvocation(job, context);

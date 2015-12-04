@@ -17,7 +17,7 @@
 
 #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux) || os(FreeBSD) || os(Android)
 import Glibc
 #endif
 
@@ -85,7 +85,7 @@ internal func _make_pthread_t() -> pthread_t {
 #if os(Linux) || os(FreeBSD)
   return pthread_t()
 #else
-  return nil
+  return 0
 #endif
 }
 

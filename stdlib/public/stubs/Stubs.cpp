@@ -33,6 +33,20 @@
 #include <sstream>
 #include <cmath>
 #define fmodl(lhs, rhs) std::fmod(lhs, rhs)
+#elif defined(__ANDROID__)
+#include <locale.h>
+static double swift_strtod_l(const char *nptr, char **endptr, locale_t loc) {
+  return strtod(nptr, endptr);
+}
+static float swift_strtof_l(const char *nptr, char **endptr, locale_t loc) {
+  return strtof(nptr, endptr);
+}
+static long double swift_strtold_l(const char *nptr, char **endptr, locale_t loc) {
+  return strtod(nptr, endptr);
+}
+#define strtod_l swift_strtod_l
+#define strtof_l swift_strtof_l
+#define strtold_l swift_strtold_l
 #else
 #include <xlocale.h>
 #endif
@@ -106,7 +120,7 @@ extern "C" uint64_t swift_uint64ToString(char *Buffer, intptr_t BufferLength,
                             /*Negative=*/false);
 }
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__ANDROID__)
 static inline locale_t getCLocale() {
   // On these platforms convenience functions from xlocale.h interpret nullptr
   // as C locale.
@@ -259,6 +273,7 @@ extern "C" long double _swift_fmodl(long double lhs, long double rhs) {
 // on compiler-rt on Linux.
 // FIXME: rdar://14883575 Libcompiler_rt omits muloti4
 #if (defined(__APPLE__) && defined(__arm64__)) || \
+    (defined(__ANDROID__) && defined(__arm64__)) || \
     (defined(__linux__) && defined(__x86_64__)) || \
     (defined(__linux__) && defined(__aarch64__)) || \
     (defined(__linux__) && defined(__powerpc64__))

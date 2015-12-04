@@ -20,6 +20,8 @@ public var errno: Int32 {
   get {
 #if os(FreeBSD)
     return __error().pointee
+#elseif os(Android)
+    return __errno().pointee
 #else
     return __errno_location().pointee
 #endif
@@ -27,6 +29,8 @@ public var errno: Int32 {
   set(val) {
 #if os(FreeBSD)
     return __error().pointee = val
+#elseif os(Android)
+    return __errno().pointee = val
 #else
     return __errno_location().pointee = val
 #endif

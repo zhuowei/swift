@@ -8,19 +8,25 @@ set(sources
 foreach(SDK ${SWIFT_SDKS})
   foreach(arch ${SWIFT_SDK_${SDK}_ARCHITECTURES})
     # Don't generate Glibc module maps for Darwin targets.
-    if("${SDK}" STREQUAL "LINUX" OR "${SDK}" STREQUAL "FREEBSD")
+    if("${SDK}" STREQUAL "LINUX" OR "${SDK}" STREQUAL "FREEBSD" OR "${SDK}" STREQUAL "ANDROID")
       set(output_dir "${SWIFTLIB_DIR}/${SWIFT_SDK_${SDK}_LIB_SUBDIR}/${arch}")
 
+
       # Determine the location of glibc based on the target.
-      set(GLIBC_INCLUDE_PATH "/usr/include")
-      set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_INCLUDE_PATH}")
-      if(("${SDK}" STREQUAL "LINUX" OR "${SDK}" STREQUAL "FREEBSD") AND CMAKE_LIBRARY_ARCHITECTURE)
-        # FIXME: Some distributions install headers in
-        #        "/usr/include/x86_64-linux-gnu/sys/...". Here we use the host
-        #        machine's path, regardless of the SDK target we're building for.
-        #        This will break if cross-compiling from a distro that uses the
-        #        architecture as part of the path to a distro that does not.
-        set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_INCLUDE_PATH}/${CMAKE_LIBRARY_ARCHITECTURE}")
+      if("${SDK}" STREQUAL "ANDROID")
+        set(GLIBC_INCLUDE_PATH "${SWIFT_ANDROID_SDK_PATH}/usr/include")
+        set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_INCLUDE_PATH}")
+      else()
+        set(GLIBC_INCLUDE_PATH "/usr/include")
+        set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_INCLUDE_PATH}")
+        if(("${SDK}" STREQUAL "LINUX" OR "${SDK}" STREQUAL "FREEBSD") AND CMAKE_LIBRARY_ARCHITECTURE)
+          # FIXME: Some distributions install headers in
+          #        "/usr/include/x86_64-linux-gnu/sys/...". Here we use the host
+          #        machine's path, regardless of the SDK target we're building for.
+          #        This will break if cross-compiling from a distro that uses the
+          #        architecture as part of the path to a distro that does not.
+          set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_INCLUDE_PATH}/${CMAKE_LIBRARY_ARCHITECTURE}")
+        endif()
       endif()
 
       # Configure the module map based on the target. Each platform needs to
@@ -28,6 +34,8 @@ foreach(SDK ${SWIFT_SDKS})
       set(modulemap_path "${CMAKE_CURRENT_BINARY_DIR}/${SWIFT_SDK_${SDK}_LIB_SUBDIR}/${arch}/module.map")
       if("${SDK}" STREQUAL "FREEBSD")
         configure_file(module.freebsd.map.in "${modulemap_path}" @ONLY)
+      elseif("${SDK}" STREQUAL "ANDROID")
+        configure_file(module.android.map.in "${modulemap_path}" @ONLY)
       else()
         configure_file(module.map.in "${modulemap_path}" @ONLY)
       endif()

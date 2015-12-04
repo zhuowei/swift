@@ -17,12 +17,23 @@
 #include <string.h>
 #include "../SwiftShims/LibcShims.h"
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
 #include <bsd/stdlib.h>
 #endif
 
+// Android's ssize_t is an int, which is the same size as long int.
+#ifndef __ANDROID__
 static_assert(std::is_same<ssize_t, swift::__swift_ssize_t>::value,
               "__swift_ssize_t is wrong");
+#endif
+
+#ifdef __ANDROID__
+extern "C" {
+extern size_t dlmalloc_usable_size(void*);
+// arc4random_random is missing in Android headers, but does exist.
+extern unsigned int arc4random_uniform(unsigned int upper_bound);
+}
+#endif
 
 namespace swift {
 
@@ -64,6 +75,10 @@ size_t _swift_stdlib_malloc_size(const void *ptr) {
 #include <malloc_np.h>
 size_t _swift_stdlib_malloc_size(const void *ptr) {
   return malloc_usable_size(const_cast<void *>(ptr));
+}
+#elif defined(__ANDROID__)
+size_t _swift_stdlib_malloc_size(const void *ptr) {
+  return dlmalloc_usable_size(const_cast<void *>(ptr));
 }
 #else
 #error No malloc_size analog known for this platform/libc.

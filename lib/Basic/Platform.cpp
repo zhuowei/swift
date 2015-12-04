@@ -58,6 +58,10 @@ StringRef swift::getPlatformNameForTriple(const llvm::Triple &triple) {
     return "watchos";
   }
 
+  if (triple.isAndroid()) {
+    return "android";
+  }
+
   if (triple.isMacOSX())
     return "macosx";
 

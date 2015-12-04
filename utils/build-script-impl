@@ -192,6 +192,9 @@ KNOWN_SETTINGS=(
     extra-swift-args            ""               "Extra arguments to pass to swift modules which match regex. Assumed to be a flattened cmake list consisting of [module_regexp, args, module_regexp, args, ...]"
     sil-verify-all              "0"              "If enabled, run the SIL verifier after each transform when building Swift files during this build process"
     swift-enable-ast-verifier   "1"              "If enabled, and the assertions are enabled, the built Swift compiler will run the AST verifier every time it is invoked"
+    swift-enable-target-linux   "1"              "Enable compiler support for targeting Linux"
+    swift-enable-target-freebsd "1"              "Enable compiler support for targeting FreeBSD"
+    swift-enable-target-android "1"              "Enable compiler support for targeting Android"
     swift-runtime-enable-dtrace "0"              "Enable runtime dtrace support"
     swift-runtime-enable-leak-checker   "0"              "Enable leaks checking routines in the runtime"
     use-gold-linker             ""               "Enable using the gold linker"
@@ -422,6 +425,39 @@ function set_deployment_target_based_options() {
                 -DSWIFT_DARWIN_DEPLOYMENT_VERSION_TVOS="${DARWIN_DEPLOYMENT_VERSION_TVOS}"
                 -DSWIFT_DARWIN_DEPLOYMENT_VERSION_WATCHOS="${DARWIN_DEPLOYMENT_VERSION_WATCHOS}"
                 -DLLVM_ENABLE_LIBCXX:BOOL=TRUE
+            )
+
+            if [[ "${llvm_target_arch}" ]] ; then
+                llvm_cmake_options=(
+                    "${llvm_cmake_options[@]}"
+                    -DLLVM_TARGET_ARCH="${llvm_target_arch}"
+                )
+            fi
+
+            ;;
+            android-*)
+            case ${deployment_target} in
+                android-armv7)
+                    llvm_host_triple="arm-linux-androideabi"
+                    llvm_target_arch="ARM"
+                    cmark_cmake_options=(
+                        -DCMAKE_C_FLAGS="$(cmark_c_flags $deployment_target)"
+                        -DCMAKE_CXX_FLAGS="$(cmark_c_flags $deployment_target)"
+                        -DCMAKE_SYSROOT:PATH="FIXME THE SYSROOT"
+                    )
+                    swift_cmake_options=(
+                        -DSWIFT_HOST_VARIANT_ARCH="armv7"
+                    )
+                    ;;
+                *)
+                    echo "Unknown deployment target"
+                    exit 1
+                    ;;
+            esac
+            native_llvm_build=$(build_directory linux-x86_64 llvm)
+            llvm_cmake_options=(
+                -DCMAKE_OSX_SYSROOT:PATH="FIXME THE SYSROOT"
+                -DLLVM_HOST_TRIPLE:STRING="${llvm_host_triple}"
             )
 
             if [[ "${llvm_target_arch}" ]] ; then
@@ -732,7 +768,8 @@ for t in ${CROSS_COMPILE_TOOLS_DEPLOYMENT_TARGETS} ; do
         iphonesimulator-i386 | iphonesimulator-x86_64 | \
         iphoneos-arm64 | iphoneos-armv7 | \
         appletvos-arm64 | appletvsimulator-x86_64 | \
-        watchos-armv7k | watchsimulator-i386)
+        watchos-armv7k | watchsimulator-i386 | \
+        android-armv7 )
             CROSS_TOOLS_DEPLOYMENT_TARGETS=(
                 "${CROSS_TOOLS_DEPLOYMENT_TARGETS[@]}"
                 "${t}"
@@ -761,6 +798,7 @@ case "$(uname -s -m)" in
     Linux\ x86_64)
         STDLIB_DEPLOYMENT_TARGETS=(
             "linux-x86_64"
+            "android-armv7"
         )
         ;;
     Linux\ armv6*)
@@ -967,6 +1005,10 @@ for deployment_target in "${STDLIB_DEPLOYMENT_TARGETS[@]}"; do
         watchsimulator-*)
             build_for_this_target=$(not ${SKIP_BUILD_WATCHOS_SIMULATOR})
             test_this_target=$(not ${SKIP_TEST_WATCHOS_SIMULATOR})
+            ;;
+        android-*)
+            build_for_this_target=1
+            test_this_target=1
             ;;
         *)
             echo "Unknown compiler deployment target: ${deployment_target}"
@@ -1200,6 +1242,9 @@ function common_cross_c_flags() {
             ;;
         watchos-armv7k)
             echo "-arch armv7k -mwatchos-version-min=${DARWIN_DEPLOYMENT_VERSION_WATCHOS}"
+            ;;
+        android-armv7)
+            echo "-arch armv7"
             ;;
     esac
 }
@@ -1924,7 +1969,7 @@ for deployment_target in "${STDLIB_DEPLOYMENT_TARGETS[@]}"; do
         linux-* | freebsd-* | macosx-* | cygwin-*)
             # OK, we can run tests directly.
             ;;
-        iphoneos-* | iphonesimulator-* | appletvos-* | appletvsimulator-* | watchos-* | watchsimulator-*)
+        iphoneos-* | iphonesimulator-* | appletvos-* | appletvsimulator-* | watchos-* | watchsimulator-* | android-* )
             # FIXME: remove this
             # echo "Don't know how to run tests for ${deployment_target}"
             continue

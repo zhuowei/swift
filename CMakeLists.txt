@@ -389,8 +389,6 @@ endfunction()
 # FIXME: separate the notions of SDKs used for compiler tools and target
 # binaries.
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  configure_sdk_unix(LINUX "Linux" "linux" "linux" "x86_64" "x86_64-unknown-linux-gnu")
-
   set(CMAKE_EXECUTABLE_FORMAT "ELF")
 
   set(SWIFT_HOST_VARIANT "linux" CACHE STRING
@@ -398,9 +396,21 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 
   set(SWIFT_HOST_VARIANT_SDK "LINUX")
   set(SWIFT_HOST_VARIANT_ARCH "x86_64")
+  set(swift_can_crosscompile_stdlib TRUE)
 
-  set(SWIFT_PRIMARY_VARIANT_SDK_default "LINUX")
-  set(SWIFT_PRIMARY_VARIANT_ARCH_default "x86_64")
+  is_sdk_requested(LINUX swift_build_linux)
+  if(swift_build_linux)
+    configure_sdk_unix(LINUX "Linux" "linux" "linux" "x86_64" "x86_64-unknown-linux-gnu")
+    set(SWIFT_PRIMARY_VARIANT_SDK_default "LINUX")
+    set(SWIFT_PRIMARY_VARIANT_ARCH_default "x86_64")
+  endif()
+
+  is_sdk_requested(ANDROID swift_build_android)
+  if(swift_build_android AND ${swift_can_crosscompile_stdlib})
+    configure_sdk_unix(ANDROID "Android" "android" "android" "armv7" "armv7-none-linux-androideabi")
+    set(SWIFT_PRIMARY_VARIANT_SDK_default "ANDROID")
+    set(SWIFT_PRIMARY_VARIANT_ARCH_default "armv7")
+  endif()
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   # Set defaults.
 

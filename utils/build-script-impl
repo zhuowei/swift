@@ -191,7 +191,7 @@ KNOWN_SETTINGS=(
     swift-enable-target-android "1"              "Enable compiler support for targeting Android"
     swift-runtime-enable-dtrace "0"              "Enable runtime dtrace support"
     swift-runtime-enable-leak-checker   "0"              "Enable leaks checking routines in the runtime"
-    use-gold-linker             ""               "Enable using the gold linker"
+    use-gold-linker             "1"               "Enable using the gold linker"
     darwin-toolchain-bundle-identifier ""        "CFBundleIdentifier for xctoolchain info plist"
     darwin-toolchain-display-name      ""        "Display Name for xctoolcain info plist"
     darwin-toolchain-name              ""        "Directory name for xctoolchain"
@@ -1056,7 +1056,8 @@ COMMON_CMAKE_OPTIONS=(
     -G "${CMAKE_GENERATOR}"
 )
 
-COMMON_C_FLAGS=""
+COMMON_C_FLAGS="-gsplit-dwarf"
+COMMON_CXX_FLAGS="-gsplit-dwarf"
 
 if [[ "${ENABLE_ASAN}" ]] ; then
     COMMON_CMAKE_OPTIONS=(
@@ -1094,6 +1095,7 @@ fi
 if [[ "${DISTCC}" ]] ; then
     BUILD_ARGS="${BUILD_ARGS} -j $(distcc -j)"
 fi
+BUILD_ARGS="${BUILD_ARGS} -j1"
 
 case "${CMAKE_GENERATOR}" in
     Ninja)
@@ -1462,8 +1464,8 @@ for deployment_target in "${HOST_TARGET}" "${CROSS_TOOLS_DEPLOYMENT_TARGETS[@]}"
                 # gold linker support.
                 cmake_options=(
                     "${cmake_options[@]}"
-                    -DCMAKE_EXE_LINKER_FLAGS:STRING="-fuse-ld=gold"
-                    -DCMAKE_SHARED_LINKER_FLAGS:STRING="-fuse-ld=gold"
+                    -DCMAKE_EXE_LINKER_FLAGS:STRING="-fuse-ld=gold -Wl,--gdb-index"
+                    -DCMAKE_SHARED_LINKER_FLAGS:STRING="-fuse-ld=gold -Wl,--gdb-index"
                 )
             fi
         else

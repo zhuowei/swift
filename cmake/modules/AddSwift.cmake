@@ -57,6 +57,12 @@ function(_add_variant_c_compile_link_flags
   list(APPEND result
     "-isysroot" "${SWIFT_SDK_${sdk}_PATH}")
 
+  if("${sdk}" STREQUAL "ANDROID")
+    list(APPEND result
+        "--sysroot=${SWIFT_SDK_${sdk}_PATH}")
+  endif()
+
+
   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
     list(APPEND result
         "-arch" "${arch}"
@@ -101,6 +107,12 @@ function(_add_variant_c_compile_flags
     list(APPEND result "-UNDEBUG")
   else()
     list(APPEND result "-DNDEBUG")
+  endif()
+
+  if("${sdk}" STREQUAL "ANDROID")
+    list(APPEND result
+        "-I/home/zhuowei/ndk/sources/cxx-stl/llvm-libc++/libcxx/include"
+        "-I/home/zhuowei/ndk/sources/android/support/include")
   endif()
 
   set("${result_var_name}" "${result}" PARENT_SCOPE)
@@ -1062,7 +1074,7 @@ function(_add_swift_library_single target name)
       # isn't the standard library.  The standard library uses a
       # linker script that isn't supported by the gold linker.
       if(NOT SWIFTLIB_SINGLE_IS_STDLIB)
-        list(APPEND link_flags "-fuse-ld=gold")
+        list(APPEND link_flags "-fuse-ld=gold -Wl,--gdb-index")
       endif()
     endif()
   endif()

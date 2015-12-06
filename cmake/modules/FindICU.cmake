@@ -1,5 +1,7 @@
 # Find libicu's libraries
 
+# Android FIXME: ICU
+
 include(FindPackageHandleStandardArgs)
 
 find_package(PkgConfig)
@@ -24,6 +26,9 @@ foreach(MODULE ${ICU_FIND_COMPONENTS})
     set(ICU_${MODULE}_LIBRARIES ${ICU_${MODULE}_LIBRARY})
   endif()
 endforeach()
+message("FIXME Android: ICU")
+set(ICU_I18N_INCLUDE_DIR "/home/zhuowei/icu/source/i18n")
+set(ICU_UC_INCLUDE_DIR "/home/zhuowei/icu/source/common")
 
 find_package_handle_standard_args(ICU DEFAULT_MSG ${ICU_REQUIRED})
 mark_as_advanced(${ICU_REQUIRED})

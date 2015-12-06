@@ -17,12 +17,15 @@
 #include <string.h>
 #include "../SwiftShims/LibcShims.h"
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
 #include <bsd/stdlib.h>
 #endif
 
+// android's ssize_t is an int, which is the same size as long int
+#ifndef __ANDROID__
 static_assert(std::is_same<ssize_t, swift::__swift_ssize_t>::value,
               "__swift_ssize_t is wrong");
+#endif
 
 namespace swift {
 
@@ -50,7 +53,7 @@ int _swift_stdlib_close(int fd) { return close(fd); }
 #if defined(__APPLE__)
 #include <malloc/malloc.h>
 size_t _swift_stdlib_malloc_size(const void *ptr) { return malloc_size(ptr); }
-#elif defined(__GNU_LIBRARY__)
+#elif defined(__GNU_LIBRARY__) || defined(__ANDROID__)
 #include <malloc.h>
 size_t _swift_stdlib_malloc_size(const void *ptr) {
   return malloc_usable_size(const_cast<void *>(ptr));
@@ -64,12 +67,21 @@ size_t _swift_stdlib_malloc_size(const void *ptr) {
 #error No malloc_size analog known for this platform/libc.
 #endif
 
+#ifndef __ANDROID__
 __swift_uint32_t _swift_stdlib_arc4random(void) { return arc4random(); }
 
 __swift_uint32_t
 _swift_stdlib_arc4random_uniform(__swift_uint32_t upper_bound) {
   return arc4random_uniform(upper_bound);
 }
+#else
+// FIXME: Android: chosen by fair dice roll
+__swift_uint32_t _swift_stdlib_arc4random(void) { return 4; }
+__swift_uint32_t
+_swift_stdlib_arc4random_uniform(__swift_uint32_t upper_bound) {
+  return 0;
+}
+#endif
 
 } // namespace swift
 

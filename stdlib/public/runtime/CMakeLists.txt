@@ -86,5 +86,6 @@ foreach(sdk ${SWIFT_CONFIGURED_SDKS})
 
     endforeach()
   endif()
+  # FIXME: Android: make a swift.ld for armv7 android
 endforeach()
 

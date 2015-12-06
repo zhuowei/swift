@@ -308,6 +308,10 @@ static void _addImageProtocolConformances(const mach_header *mh,
   _addImageProtocolConformancesBlock(conformances, conformancesSize);
 }
 #elif defined(__ELF__)
+#ifdef __ANDROID__
+#define RTLD_NOLOAD 0
+#endif
+
 static int _addImageProtocolConformances(struct dl_phdr_info *info,
                                           size_t size, void * /*data*/) {
   void *handle;
@@ -371,7 +375,10 @@ static void _initializeCallbacksToInspectDylib() {
   // loaded ones.
   // FIXME: Find a way to have this continue to happen after.
   // rdar://problem/19045112
+  #ifndef __ANDROID__
+  // FIXME: Android: doesn't have dl_iterate_phdr before API 21
   dl_iterate_phdr(_addImageProtocolConformances, nullptr);
+  #endif
 #elif defined(__CYGWIN__)
   _swift_dl_iterate_phdr(_addImageProtocolConformances, nullptr);
 #else

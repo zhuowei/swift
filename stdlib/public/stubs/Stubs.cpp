@@ -41,6 +41,11 @@
 #include "swift/Runtime/Debug.h"
 #include "swift/Basic/Lazy.h"
 
+#ifdef __ANDROID__
+#include "getline.inc"
+#define getline swift_getline
+#endif
+
 static uint64_t uint64ToStringImpl(char *Buffer, uint64_t Value,
                                    int64_t Radix, bool Uppercase,
                                    bool Negative) {
@@ -106,7 +111,7 @@ extern "C" uint64_t swift_uint64ToString(char *Buffer, intptr_t BufferLength,
                             /*Negative=*/false);
 }
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__ANDROID__)
 static inline locale_t getCLocale() {
   // On these platforms convenience functions from xlocale.h interpret nullptr
   // as C locale.
@@ -126,6 +131,22 @@ static locale_t makeCLocale() {
 static locale_t getCLocale() {
   return SWIFT_LAZY_CONSTANT(makeCLocale());
 }
+#endif
+
+#ifdef __ANDROID__
+#define uselocale(a) (nullptr)
+static double swift_strtod_l(const char* a, char** b, locale_t c) {
+	return strtod(a, b);
+}
+static float swift_strtof_l(const char* a, char** b, locale_t c) {
+	return strtof(a, b);
+}
+static long double swift_strtold_l(const char* a, char** b, locale_t c) {
+	return strtold(a, b);
+}
+#define strtod_l swift_strtod_l
+#define strtof_l swift_strtof_l
+#define strtold_l swift_strtold_l
 #endif
 
 #if defined(__APPLE__)

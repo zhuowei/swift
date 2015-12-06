@@ -57,6 +57,12 @@ function(_add_variant_c_compile_link_flags
   list(APPEND result
     "-isysroot" "${SWIFT_SDK_${sdk}_PATH}")
 
+  if("${sdk}" STREQUAL "ANDROID")
+    list(APPEND result
+        "--sysroot=${SWIFT_SDK_${sdk}_PATH}")
+  endif()
+
+
   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
     list(APPEND result
         "-arch" "${arch}"
@@ -118,6 +124,12 @@ function(_add_variant_c_compile_flags
   if(analyze_code_coverage)
     list(APPEND result "-fprofile-instr-generate"
                        "-fcoverage-mapping")
+  endif()
+
+  if("${sdk}" STREQUAL "ANDROID")
+    list(APPEND result
+        "-I/home/zhuowei/ndk/sources/cxx-stl/llvm-libc++/libcxx/include"
+        "-I/home/zhuowei/ndk/sources/android/support/include")
   endif()
 
   set("${result_var_name}" "${result}" PARENT_SCOPE)

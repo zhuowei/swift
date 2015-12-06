@@ -1056,8 +1056,8 @@ COMMON_CMAKE_OPTIONS=(
     -G "${CMAKE_GENERATOR}"
 )
 
-COMMON_C_FLAGS="-gsplit-dwarf"
-COMMON_CXX_FLAGS="-gsplit-dwarf"
+COMMON_C_FLAGS=""
+COMMON_CXX_FLAGS=""
 
 if [[ "${ENABLE_ASAN}" ]] ; then
     COMMON_CMAKE_OPTIONS=(
@@ -1464,8 +1464,8 @@ for deployment_target in "${HOST_TARGET}" "${CROSS_TOOLS_DEPLOYMENT_TARGETS[@]}"
                 # gold linker support.
                 cmake_options=(
                     "${cmake_options[@]}"
-                    -DCMAKE_EXE_LINKER_FLAGS:STRING="-fuse-ld=gold -Wl,--gdb-index"
-                    -DCMAKE_SHARED_LINKER_FLAGS:STRING="-fuse-ld=gold -Wl,--gdb-index"
+                    -DCMAKE_EXE_LINKER_FLAGS:STRING="-fuse-ld=gold"
+                    -DCMAKE_SHARED_LINKER_FLAGS:STRING="-fuse-ld=gold"
                 )
             fi
         else

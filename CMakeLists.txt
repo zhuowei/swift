@@ -125,6 +125,9 @@ set(SWIFT_NATIVE_SWIFT_TOOLS_PATH "" CACHE STRING
 option(SWIFT_ENABLE_LTO
   "If set to true, build the swift compiler with link time optimization enabled" FALSE)
 
+set(SWIFT_ANDROID_NDK_PATH "/home/zhuowei/ndk" CACHE STRING
+    "Path to the directory that contains the Android NDK tools that are executable on the build machine")
+
 # The following only works with the Ninja generator in CMake >= 3.0.
 set(SWIFT_PARALLEL_COMPILE_JOBS "" CACHE STRING
   "Define the maximum number of concurrent compilation jobs.")

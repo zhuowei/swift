@@ -1116,7 +1116,7 @@ CMAKE_JOBS="${BUILD_JOBS}"
 if [[ "${DISTCC}" ]] ; then
     CMAKE_JOBS="$(distcc -j)"
 fi
-BUILD_ARGS="${BUILD_ARGS} -j1"
+BUILD_ARGS="${BUILD_ARGS} -j2"
 
 case "${CMAKE_GENERATOR}" in
     Ninja)

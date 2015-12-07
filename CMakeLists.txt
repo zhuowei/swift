@@ -113,6 +113,8 @@ set(SWIFT_NATIVE_CLANG_TOOLS_PATH "" CACHE STRING
 set(SWIFT_NATIVE_SWIFT_TOOLS_PATH "" CACHE STRING
     "Path to the directory that contains Swift tools that are executable on the build machine")
 
+set(SWIFT_ANDROID_NDK_PATH "/home/zhuowei/ndk" CACHE STRING
+    "Path to the directory that contains the Android NDK tools that are executable on the build machine")
 # The following only works with the Ninja generator in CMake >= 3.0.
 set(SWIFT_PARALLEL_COMPILE_JOBS "" CACHE STRING
   "Define the maximum number of concurrent compilation jobs.")

@@ -102,8 +102,8 @@ function(_add_variant_c_compile_flags
 
   if("${sdk}" STREQUAL "ANDROID")
     list(APPEND result
-        "-I/home/zhuowei/ndk/sources/cxx-stl/llvm-libc++/libcxx/include"
-        "-I/home/zhuowei/ndk/sources/android/support/include")
+        "-I${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libcxx/include"
+        "-I${SWIFT_ANDROID_NDK_PATH}/sources/android/support/include")
   endif()
 
   set("${result_var_name}" "${result}" PARENT_SCOPE)
@@ -163,6 +163,11 @@ function(_add_variant_link_flags
 
   if("${sdk}" STREQUAL "LINUX")
     list(APPEND result "-lpthread" "-ldl")
+  elseif("${sdk}" STREQUAL "ANDROID")
+    list(APPEND result
+        "-ldl"
+        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/4.8/thumb"
+        "${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/thumb/libc++_shared.so")
   else()
     list(APPEND result "-lobjc")
   endif()

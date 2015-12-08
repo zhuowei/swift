@@ -27,6 +27,12 @@ static_assert(std::is_same<ssize_t, swift::__swift_ssize_t>::value,
               "__swift_ssize_t is wrong");
 #endif
 
+#ifdef __ANDROID__
+extern "C" {
+extern size_t dlmalloc_usable_size(void*);
+}
+#endif
+
 namespace swift {
 
 void _swift_stdlib_free(void *ptr) { free(ptr); }
@@ -53,7 +59,7 @@ int _swift_stdlib_close(int fd) { return close(fd); }
 #if defined(__APPLE__)
 #include <malloc/malloc.h>
 size_t _swift_stdlib_malloc_size(const void *ptr) { return malloc_size(ptr); }
-#elif defined(__GNU_LIBRARY__) || defined(__ANDROID__)
+#elif defined(__GNU_LIBRARY__)
 #include <malloc.h>
 size_t _swift_stdlib_malloc_size(const void *ptr) {
   return malloc_usable_size(const_cast<void *>(ptr));
@@ -62,6 +68,11 @@ size_t _swift_stdlib_malloc_size(const void *ptr) {
 #include <malloc_np.h>
 size_t _swift_stdlib_malloc_size(const void *ptr) {
   return malloc_usable_size(const_cast<void *>(ptr));
+}
+#elif defined(__ANDROID__)
+// on Android before API 21 malloc_usable_size is exported by this name
+size_t _swift_stdlib_malloc_size(const void *ptr) {
+  return dlmalloc_usable_size(const_cast<void *>(ptr));
 }
 #else
 #error No malloc_size analog known for this platform/libc.

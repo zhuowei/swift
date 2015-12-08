@@ -36,8 +36,11 @@
 #include "swift/Basic/Lazy.h"
 
 #ifdef __ANDROID__
+extern "C" {
 #include "getline.inc"
 #define getline swift_getline
+#include "mulodi4.inc"
+}
 #endif
 
 static uint64_t uint64ToStringImpl(char *Buffer, uint64_t Value,
@@ -134,11 +137,15 @@ static float swift_strtof_l(const char* a, char** b, locale_t c) {
 	return strtof(a, b);
 }
 static long double swift_strtold_l(const char* a, char** b, locale_t c) {
-	return strtold(a, b);
+	return strtod(a, b);
+}
+static long double swift_fmodl(long double a, long double b) {
+	return fmod(a, b);
 }
 #define strtod_l swift_strtod_l
 #define strtof_l swift_strtof_l
 #define strtold_l swift_strtold_l
+#define fmodl swift_fmodl
 #endif
 
 #if defined(__APPLE__)
@@ -251,6 +258,7 @@ extern "C" long double _swift_fmodl(long double lhs, long double rhs) {
 // on compiler-rt on Linux.
 // FIXME: rdar://14883575 Libcompiler_rt omits muloti4
 #if (defined(__APPLE__) && defined(__arm64__)) || \
+    (defined(__ANDROID__) && defined(__arm64__)) || \
     (defined(__linux__) && defined(__x86_64__)) || \
     (defined(__linux__) && defined(__aarch64__)) || \
     (defined(__linux__) && defined(__powerpc64__))
@@ -299,7 +307,7 @@ __muloti4(ti_int a, ti_int b, int* overflow)
 
 #endif
 
-#if defined(__linux__) && defined(__arm__)
+#if defined(__linux__) && defined(__arm__) && !defined(__ANDROID__)
 // Similar to above, but with mulodi4.  Perhaps this is
 // something that shouldn't be done, and is a bandaid over
 // some other lower-level architecture issue that I'm

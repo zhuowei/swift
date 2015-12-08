@@ -156,8 +156,7 @@ else()
   find_package(ICU REQUIRED COMPONENTS uc i18n)
   find_package(BSD REQUIRED)
   list(APPEND swift_core_private_link_libraries
-      ${ICU_UC_LIBRARY} ${ICU_I18N_LIBRARY}
-      ${BSD_LIBRARIES})
+      ${ICU_UC_LIBRARY} ${ICU_I18N_LIBRARY})
 endif()
 
 option(SWIFT_CHECK_ESSENTIAL_STDLIB

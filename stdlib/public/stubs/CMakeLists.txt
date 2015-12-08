@@ -11,6 +11,8 @@ add_swift_library(swiftStdlibStubs IS_STDLIB IS_STDLIB_CORE
   GlobalObjects.cpp
   LibcShims.cpp
   Stubs.cpp
+  android_support/Android_log2.cpp
+  android_support/Android_log2f.cpp
   ${swift_stubs_objc_sources}
   C_COMPILE_FLAGS ${SWIFT_CORE_CXX_FLAGS}
   INSTALL_IN_COMPONENT stdlib)

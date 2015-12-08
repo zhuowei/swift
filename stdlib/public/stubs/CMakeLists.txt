@@ -25,6 +25,8 @@ add_swift_library(swiftStdlibStubs IS_STDLIB IS_STDLIB_CORE
   LibcShims.cpp
   Stubs.cpp
   UnicodeExtendedGraphemeClusters.cpp.gyb
+  android_support/Android_log2.cpp
+  android_support/Android_log2f.cpp
   ${swift_stubs_objc_sources}
   ${swift_stubs_unicode_normalization_sources}
   C_COMPILE_FLAGS ${SWIFT_CORE_CXX_FLAGS}

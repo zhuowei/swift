@@ -1,16 +1,22 @@
 set(sources
   module.map
   )
-set(output_dir "${SWIFTLIB_DIR}/glibc")
+set(output_dir "${SWIFTLIB_DIR}/bionic")
 
 set(commands
     COMMAND ${CMAKE_COMMAND} "-E" "make_directory" "${output_dir}")
 set(outputs)
 foreach(input ${sources})
+  #list(APPEND commands
+  #    COMMAND
+  #      "${CMAKE_COMMAND}" "-E" "copy_if_different"
+  #      "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
+  #      "${output_dir}/${input}")
   list(APPEND commands
       COMMAND
-        "${CMAKE_COMMAND}" "-E" "copy_if_different"
+        "sed" "-e" "s@SYSROOT@/home/zhuowei/ndk/platforms/android-16/arch-arm@g"
         "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
+        ">"
         "${output_dir}/${input}")
   list(APPEND outputs "${output_dir}/${input}")
 endforeach()
@@ -18,18 +24,18 @@ endforeach()
 list(APPEND outputs "${output_dir}")
 add_custom_command_target(unused_var
     ${commands}
-    CUSTOM_TARGET_NAME "copy_glibc_module"
+    CUSTOM_TARGET_NAME "copy_bionic_module"
     OUTPUT "${outputs}"
     DEPENDS "${sources}"
-    COMMENT "Copying Glibc module to ${output_dir}")
+    COMMENT "Copying Bionic module to ${output_dir}")
 
 swift_install_in_component(stdlib
     FILES ${sources}
-    DESTINATION "lib/swift/glibc")
+    DESTINATION "lib/swift/bionic")
 
 add_swift_library(swiftGlibc IS_SDK_OVERLAY
   Glibc.swift
-  FILE_DEPENDS copy_glibc_module "${SWIFTLIB_DIR}/glibc"
-  TARGET_SDKS LINUX
+  FILE_DEPENDS copy_bionic_module "${SWIFTLIB_DIR}/bionic"
+  TARGET_SDKS ANDROID
   INSTALL_IN_COMPONENT stdlib-experimental)
 

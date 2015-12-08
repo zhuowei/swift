@@ -36,4 +36,5 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   add_subdirectory(Glibc)
+  add_subdirectory(Bionic)
 endif()

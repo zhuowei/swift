@@ -43,4 +43,5 @@ swift_install_in_component(stdlib
 add_swift_library(swiftGlibc IS_SDK_OVERLAY
     ${sources}
     FILE_DEPENDS copy_glibc_module "${output_dir}"
+    TARGET_SDKS LINUX
     INSTALL_IN_COMPONENT stdlib-experimental)

@@ -199,8 +199,9 @@ function(_add_variant_link_flags
   elseif("${sdk}" STREQUAL "ANDROID")
     list(APPEND result
         "-ldl"
-        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/4.8/thumb"
-        "${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/thumb/libc++_shared.so")
+        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/4.8"
+        "${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_shared.so"
+        "-L/home/zhuowei/libiconv-libicu-android/armeabi-v7a")
   else()
     list(APPEND result "-lobjc")
   endif()

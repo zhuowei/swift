@@ -345,10 +345,10 @@ module SwiftBionic [system] {
       header "SYSROOT/usr/include/termios.h"
       export *
     }
-    module ulimit {
-      header "SYSROOT/usr/include/ulimit.h"
-      export *
-    }
+    //module ulimit {
+    //  header "SYSROOT/usr/include/ulimit.h"
+    //  export *
+    //}
     module unistd {
       header "SYSROOT/usr/include/unistd.h"
       export *
@@ -361,10 +361,10 @@ module SwiftBionic [system] {
     //  header "SYSROOT/usr/include/utmpx.h"
     //  export *
     //}
-    module wait {
-      header "SYSROOT/usr/include/wait.h"
-      export *
-    }
+    //module wait {
+    //  header "SYSROOT/usr/include/wait.h"
+    //  export *
+    //}
     //module wordexp {
     //  header "SYSROOT/usr/include/wordexp.h"
     //  export *

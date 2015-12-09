@@ -16,7 +16,7 @@ import SwiftPrivateDarwinExtras
 
 #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
 import Glibc
 #endif
 
@@ -985,6 +985,7 @@ public enum OSVersion : CustomStringConvertible {
   case TVOSSimulator
   case watchOSSimulator
   case Linux
+  case Android
 
   public var description: String {
     switch self {
@@ -1004,6 +1005,8 @@ public enum OSVersion : CustomStringConvertible {
       return "watchOSSimulator"
     case Linux:
       return "Linux"
+    case Android:
+      return "Android"
     }
   }
 }
@@ -1036,6 +1039,8 @@ func _getOSVersion() -> OSVersion {
   return .watchOSSimulator
 #elseif os(Linux)
   return .Linux
+#elseif os(Android)
+  return .Android
 #else
   let productName = _stdlib_getSystemVersionPlistProperty("ProductName")!
   let productVersion = _stdlib_getSystemVersionPlistProperty("ProductVersion")!
@@ -1106,6 +1111,7 @@ public enum TestRunPredicate : CustomStringConvertible {
   case watchOSSimulatorAny(/*reason:*/ String)
 
   case LinuxAny(reason: String)
+  case AndroidAny(reason: String)
 
   public var description: String {
     switch self {
@@ -1174,6 +1180,9 @@ public enum TestRunPredicate : CustomStringConvertible {
 
     case LinuxAny(reason: let reason):
       return "LinuxAny(*, reason: \(reason))"
+
+    case AndroidAny(reason: let reason):
+      return "AndroidAny(*, reason: \(reason))"
     }
   }
 
@@ -1401,6 +1410,14 @@ public enum TestRunPredicate : CustomStringConvertible {
     case LinuxAny:
       switch _getRunningOSVersion() {
       case .Linux:
+        return true
+      default:
+        return false
+      }
+
+    case AndroidAny:
+      switch _getRunningOSVersion() {
+      case .Android:
         return true
       default:
         return false

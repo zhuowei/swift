@@ -18,10 +18,10 @@
 
 public var errno: Int32 {
   get {
-    return __errno_location().memory
+    return __errno().memory
   }
   set(val) {
-    return __errno_location().memory = val
+    return __errno().memory = val
   }
 }
 
@@ -61,7 +61,7 @@ public var S_ISVTX: mode_t  { return mode_t(0o001000) }
 // signal.h
 //===----------------------------------------------------------------------===//
 
-#if os(Linux)
+#if os(Android)
 public var SIG_DFL: __sighandler_t? { return nil }
 public var SIG_IGN: __sighandler_t {
   return unsafeBitCast(1, __sighandler_t.self)

@@ -13,9 +13,11 @@
 import SwiftPrivate
 #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux) || os(FreeBSD) || os(Android)
 import Glibc
 #endif
+
+#if !os(Android)
 
 // swift_posix_spawn isn't available in the public watchOS SDK, we sneak by the
 // unavailable attribute declaration here of the APIs that we need.
@@ -47,6 +49,8 @@ func swift_posix_spawn(
   _ argv: UnsafePointer<UnsafeMutablePointer<Int8>>,
   _ envp: UnsafePointer<UnsafeMutablePointer<Int8>>) -> CInt
 
+#endif
+
 /// Calls POSIX `pipe()`.
 func posixPipe() -> (readFD: CInt, writeFD: CInt) {
   var fds: [CInt] = [ -1, -1 ]
@@ -64,6 +68,9 @@ func posixPipe() -> (readFD: CInt, writeFD: CInt) {
 /// stderr.
 public func spawnChild(args: [String])
   -> (pid: pid_t, stdinFD: CInt, stdoutFD: CInt, stderrFD: CInt) {
+#if os(Android)
+  preconditionFailure("posix_spawn doesn't exist on Android")
+#else
   var fileActions = posix_spawn_file_actions_t()
   if swift_posix_spawn_file_actions_init(&fileActions) != 0 {
     preconditionFailure("swift_posix_spawn_file_actions_init() failed")
@@ -138,6 +145,7 @@ public func spawnChild(args: [String])
   }
 
   return (pid, childStdin.writeFD, childStdout.readFD, childStderr.readFD)
+#endif
 }
 
 internal func _readAll(fd: CInt) -> String {
@@ -234,6 +242,8 @@ internal func _getEnviron() -> UnsafeMutablePointer<UnsafeMutablePointer<CChar>>
   return _NSGetEnviron().memory
 #elseif os(FreeBSD)
   return environ;
+#elseif os(Android)
+  return environ
 #else
   return __environ
 #endif

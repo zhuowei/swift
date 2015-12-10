@@ -306,10 +306,57 @@ static void _addImageProtocolConformances(const mach_header *mh,
   
   _addImageProtocolConformancesBlock(conformances, conformancesSize);
 }
+
+#elif defined(__ANDROID__)
+#include <climits>
+#include <cstdio>
+#include <unordered_set>
+
+static void _addImageProtocolConformances(std::string const& name) {
+  // FIXME: Android: special case the current executable?
+  void *handle = dlopen(name.c_str(), RTLD_LAZY);
+  if (!handle)
+    return; // not a shared library
+  auto conformances = reinterpret_cast<const uint8_t*>(
+      dlsym(handle, SWIFT_PROTOCOL_CONFORMANCES_SECTION));
+
+  if (!conformances) {
+    // if there are no conformances, don't hold this handle open.
+    dlclose(handle);
+    return;
+  }
+
+  // Extract the size of the conformances block from the head of the section
+  auto conformancesSize = *reinterpret_cast<const uint64_t*>(conformances);
+  conformances += sizeof(conformancesSize);
+
+  _addImageProtocolConformancesBlock(conformances, conformancesSize);
+
+  dlclose(handle);
+}
+
+static void android_iterate_libs(void (*callback)(std::string const&)) {
+  std::unordered_set<std::string> already;
+  FILE* f = fopen("/proc/self/maps", "r");
+  if (!f)
+    return;
+  char name[PATH_MAX + 1];
+  char perms[4 + 1];
+  while (fscanf(f, " %*s %4c %*s %*s %*s%*[ ]%[^\n]", perms, name) > 0) {
+    if (perms[2] != 'x' || name[0] != '/')
+      continue;
+    if (strncmp(name, "/dev/", 5) == 0)
+      continue;
+    std::string name_str = name;
+    if (already.count(name_str) != 0)
+     continue;
+    already.insert(name_str);
+    callback(name_str);
+  }
+  fclose(f);
+}
+
 #elif defined(__ELF__)
-#ifdef __ANDROID__
-#define RTLD_NOLOAD 0
-#endif
 
 static int _addImageProtocolConformances(struct dl_phdr_info *info,
                                           size_t size, void * /*data*/) {
@@ -344,15 +391,15 @@ static void _initializeCallbacksToInspectDylib() {
   // Dyld will invoke this on our behalf for all images that have already
   // been loaded.
   _dyld_register_func_for_add_image(_addImageProtocolConformances);
+#elif defined(__ANDROID__)
+  // Android only gained dl_iterate_phdr in API 21, so use /proc/self/maps
+  android_iterate_libs(_addImageProtocolConformances);
 #elif defined(__ELF__)
   // Search the loaded dls. Unlike the above, this only searches the already
   // loaded ones.
   // FIXME: Find a way to have this continue to happen after.
   // rdar://problem/19045112
-  #ifndef __ANDROID__
-  // FIXME: Android: doesn't have dl_iterate_phdr before API 21
   dl_iterate_phdr(_addImageProtocolConformances, nullptr);
-  #endif
 #else
 # error No known mechanism to inspect dynamic libraries on this platform.
 #endif

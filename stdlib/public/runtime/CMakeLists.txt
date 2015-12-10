@@ -72,7 +72,7 @@ add_swift_library(swiftRuntime IS_STDLIB IS_STDLIB_CORE
   INSTALL_IN_COMPONENT stdlib)
 
 foreach(sdk ${SWIFT_CONFIGURED_SDKS})
-  if("${sdk}" STREQUAL "LINUX")
+  if("${sdk}" STREQUAL "LINUX" OR "${sdk}" STREQUAL "ANDROID")
     foreach(arch ${SWIFT_SDK_${sdk}_ARCHITECTURES})
       set(arch_subdir "${SWIFT_SDK_${sdk}_LIB_SUBDIR}/${arch}")
 
@@ -86,6 +86,5 @@ foreach(sdk ${SWIFT_CONFIGURED_SDKS})
 
     endforeach()
   endif()
-  # FIXME: Android: make a swift.ld for armv7 android
 endforeach()
 

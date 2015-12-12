@@ -1211,6 +1211,31 @@ toolchains::GenericUnix::constructInvocation(const LinkJobAction &job,
     Arguments.push_back(context.Args.MakeArgString(LibProfile));
   }
 
+  if (getTriple().isAndroid()) {
+    // FIXME: Android: hard-coded paths to arm; needs to fix for arm64, x86
+    Arguments.push_back("-target");
+    Arguments.push_back("armv7-none-linux-androideabi");
+    //Arguments.push_back(context.Args.MakeArgString(getTriple().str()));
+
+    const char* ndkhome = getenv("ANDROID_NDK_HOME");
+    assert(ndkhome && "ANDROID_NDK_HOME needs to be set to NDK "
+      "install directory for linking");
+
+    auto libgccpath = Twine(ndkhome) + "/toolchains/"
+      "arm-linux-androideabi-4.8/prebuilt/linux-x86_64/"
+      "lib/gcc/arm-linux-androideabi/4.8";
+    Arguments.push_back("-L");
+    Arguments.push_back(context.Args.MakeArgString(libgccpath));
+
+    auto libcxxpath = Twine(ndkhome) + "/sources/"
+      "cxx-stl/llvm-libc++/libs/armeabi-v7a";
+    Arguments.push_back("-L");
+    Arguments.push_back(context.Args.MakeArgString(libcxxpath));
+
+    Arguments.push_back("-lgcc");
+    Arguments.push_back("-lc");
+  }
+
   // FIXME: We probably shouldn't be adding an rpath here unless we know ahead
   // of time the standard library won't be copied.
   Arguments.push_back("-Xlinker");

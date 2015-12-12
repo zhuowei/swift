@@ -14,7 +14,7 @@ foreach(input ${sources})
   #      "${output_dir}/${input}")
   list(APPEND commands
       COMMAND
-        "sed" "-e" "s@SYSROOT@/home/zhuowei/ndk/platforms/android-16/arch-arm@g"
+        "sed" "-e" "s@SYSROOT@${SWIFT_ANDROID_NDK_PATH}/platforms/android-16/arch-arm@g"
         "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
         ">"
         "${output_dir}/${input}")
@@ -39,3 +39,15 @@ add_swift_library(swiftGlibc IS_SDK_OVERLAY
   TARGET_SDKS ANDROID
   INSTALL_IN_COMPONENT stdlib-experimental)
 
+# FIXME: Android: find where this belongs
+set(iculibs
+    "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/libicudata.so"
+    "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/libicuuc.so"
+    "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/libicui18n.so"
+)
+
+# TODO: Android: copy this during build as well
+
+swift_install_in_component(stdlib
+    FILES ${iculibs}
+    DESTINATION "lib/swift/android/armv7")

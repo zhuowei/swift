@@ -1082,6 +1082,16 @@ void Driver::buildOutputInfo(const ToolChain &TC, const DerivedArgList &Args,
           });
         }
       }
+    } else if (TC.getTriple().isAndroid()) {
+      const char* ndkhome = getenv("ANDROID_NDK_HOME");
+      if (!ndkhome) {
+        llvm::errs() <<
+          "ANDROID_NDK_HOME environmental variable not set; "
+          "won't be able to build Android programs. Please "
+          "set it to the path of the NDK\n";
+      } else {
+        OI.SDKPath = std::string(ndkhome) + "/platforms/android-16/arch-arm";
+      }
     }
 
     if (!OI.SDKPath.empty()) {

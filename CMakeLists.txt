@@ -125,7 +125,7 @@ set(SWIFT_NATIVE_SWIFT_TOOLS_PATH "" CACHE STRING
 option(SWIFT_ENABLE_LTO
   "If set to true, build the swift compiler with link time optimization enabled" FALSE)
 
-set(SWIFT_ANDROID_NDK_PATH "/home/zhuowei/ndk" CACHE STRING
+set(SWIFT_ANDROID_NDK_PATH "$ENV{ANDROID_NDK_HOME}" CACHE STRING
     "Path to the directory that contains the Android NDK tools that are executable on the build machine")
 
 # The following only works with the Ninja generator in CMake >= 3.0.
@@ -448,8 +448,12 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 
     is_sdk_requested(ANDROID swift_build_android)
     if(swift_build_android AND ${swift_can_crosscompile_stdlib})
+      if("${SWIFT_ANDROID_NDK_PATH}" STREQUAL "")
+        message(FATAL_ERROR "environmental variable ANDROID_NDK_HOME not set")
+      endif()
       configure_sdk_unix(ANDROID "Android" "android" "android" "armv7" "armv7-none-linux-androideabi")
-      set(SWIFT_SDK_ANDROID_PATH "/home/zhuowei/ndk/platforms/android-16/arch-arm")
+      set(SWIFT_SDK_ANDROID_PATH "${SWIFT_ANDROID_NDK_PATH}/platforms/android-16/arch-arm")
+
       set(SWIFT_PRIMARY_VARIANT_SDK_default "ANDROID")
       set(SWIFT_PRIMARY_VARIANT_ARCH_default "armv7")
     endif()

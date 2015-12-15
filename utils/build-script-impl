@@ -1095,7 +1095,6 @@ fi
 if [[ "${DISTCC}" ]] ; then
     BUILD_ARGS="${BUILD_ARGS} -j $(distcc -j)"
 fi
-BUILD_ARGS="${BUILD_ARGS} -j2"
 
 case "${CMAKE_GENERATOR}" in
     Ninja)

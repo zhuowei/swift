@@ -311,10 +311,10 @@ static void _addImageProtocolConformances(const mach_header *mh,
 #include <climits>
 #include <cstdio>
 #include <unordered_set>
+#include <unistd.h>
 
-static void _addImageProtocolConformances(std::string const& name) {
-  // FIXME: Android: special case the current executable?
-  void *handle = dlopen(name.c_str(), RTLD_LAZY);
+static void _addImageProtocolConformances(const char *name) {
+  void *handle = dlopen(name, RTLD_LAZY);
   if (!handle)
     return; // not a shared library
   auto conformances = reinterpret_cast<const uint8_t*>(
@@ -335,11 +335,17 @@ static void _addImageProtocolConformances(std::string const& name) {
   dlclose(handle);
 }
 
-static void android_iterate_libs(void (*callback)(std::string const&)) {
+static void android_iterate_libs(void (*callback)(const char*)) {
   std::unordered_set<std::string> already;
   FILE* f = fopen("/proc/self/maps", "r");
   if (!f)
     return;
+  char ownname[PATH_MAX + 1];
+  if (readlink("/proc/self/exe", ownname, sizeof(ownname)) == -1) {
+    fprintf(stderr, "swift: can't find path of executable\n");
+    ownname[0] = '\0';
+  }
+
   char name[PATH_MAX + 1];
   char perms[4 + 1];
   while (fscanf(f, " %*s %4c %*s %*s %*s%*[ ]%[^\n]", perms, name) > 0) {
@@ -351,7 +357,12 @@ static void android_iterate_libs(void (*callback)(std::string const&)) {
     if (already.count(name_str) != 0)
      continue;
     already.insert(name_str);
-    callback(name_str);
+    const char* libname = name_str.c_str();
+    if (strcmp(libname, ownname) == 0) {
+      // need to pass null if opening main executable
+      libname = nullptr;
+    }
+    callback(libname);
   }
   fclose(f);
 }

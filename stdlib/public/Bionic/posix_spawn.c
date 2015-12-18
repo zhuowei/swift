@@ -27,20 +27,17 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
-#include "namespace.h"
 #include <sys/queue.h>
 #include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
-#include <spawn.h>
+#include "spawn.h"
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "un-namespace.h"
-#include "libc_private.h"
 
 extern char **environ;
 
@@ -85,6 +82,7 @@ typedef struct __posix_spawn_file_actions_entry {
 static int
 process_spawnattr(const posix_spawnattr_t sa)
 {
+#if 0
 	struct sigaction sigact = { .sa_flags = 0, .sa_handler = SIG_DFL };
 	int i;
 
@@ -133,6 +131,7 @@ process_spawnattr(const posix_spawnattr_t sa)
 					return (errno);
 		}
 	}
+#endif
 
 	return (0);
 }
@@ -145,30 +144,30 @@ process_file_actions_entry(posix_spawn_file_actions_entry_t *fae)
 	switch (fae->fae_action) {
 	case FAE_OPEN:
 		/* Perform an open(), make it use the right fd */
-		fd = _open(fae->fae_path, fae->fae_oflag, fae->fae_mode);
+		fd = open(fae->fae_path, fae->fae_oflag, fae->fae_mode);
 		if (fd < 0)
 			return (errno);
 		if (fd != fae->fae_fildes) {
-			if (_dup2(fd, fae->fae_fildes) == -1)
+			if (dup2(fd, fae->fae_fildes) == -1)
 				return (errno);
-			if (_close(fd) != 0) {
+			if (close(fd) != 0) {
 				if (errno == EBADF)
 					return (EBADF);
 			}
 		}
-		if (_fcntl(fae->fae_fildes, F_SETFD, 0) == -1)
+		if (fcntl(fae->fae_fildes, F_SETFD, 0) == -1)
 			return (errno);
 		break;
 	case FAE_DUP2:
 		/* Perform a dup2() */
-		if (_dup2(fae->fae_fildes, fae->fae_newfildes) == -1)
+		if (dup2(fae->fae_fildes, fae->fae_newfildes) == -1)
 			return (errno);
-		if (_fcntl(fae->fae_newfildes, F_SETFD, 0) == -1)
+		if (fcntl(fae->fae_newfildes, F_SETFD, 0) == -1)
 			return (errno);
 		break;
 	case FAE_CLOSE:
 		/* Perform a close(), do not fail if already closed */
-		(void)_close(fae->fae_fildes);
+		(void)close(fae->fae_fildes);
 		break;
 	}
 	return (0);
@@ -198,7 +197,7 @@ do_posix_spawn(pid_t *pid, const char *path,
 	pid_t p;
 	volatile int error = 0;
 
-	p = vfork();
+	p = fork();
 	switch (p) {
 	case -1:
 		return (errno);
@@ -213,15 +212,15 @@ do_posix_spawn(pid_t *pid, const char *path,
 			if (error)
 				_exit(127);
 		}
-		if (use_env_path)
-			_execvpe(path, argv, envp != NULL ? envp : environ);
-		else
-			_execve(path, argv, envp != NULL ? envp : environ);
+		//if (use_env_path)
+		//	execvpe(path, argv, envp != NULL ? envp : environ);
+		//else
+			execve(path, argv, envp != NULL ? envp : environ);
 		error = errno;
 		_exit(127);
 	default:
 		if (error != 0)
-			_waitpid(p, NULL, WNOHANG);
+			waitpid(p, NULL, WNOHANG);
 		else if (pid != NULL)
 			*pid = p;
 		return (error);

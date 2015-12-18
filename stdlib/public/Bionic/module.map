@@ -369,5 +369,9 @@ module SwiftBionic [system] {
     //  header "SYSROOT/usr/include/wordexp.h"
     //  export *
     //}
+    module spawn {
+      header "spawn.h"
+      export *
+    }
   }
 }

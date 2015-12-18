@@ -17,7 +17,7 @@ import Darwin
 import Glibc
 #endif
 
-#if !os(Android)
+// FIXME: Android: prefix with swift_ in Android version
 
 // swift_posix_spawn isn't available in the public watchOS SDK, we sneak by the
 // unavailable attribute declaration here of the APIs that we need.
@@ -49,7 +49,6 @@ func swift_posix_spawn(
   _ argv: UnsafePointer<UnsafeMutablePointer<Int8>>,
   _ envp: UnsafePointer<UnsafeMutablePointer<Int8>>) -> CInt
 
-#endif
 
 /// Calls POSIX `pipe()`.
 func posixPipe() -> (readFD: CInt, writeFD: CInt) {
@@ -68,9 +67,6 @@ func posixPipe() -> (readFD: CInt, writeFD: CInt) {
 /// stderr.
 public func spawnChild(args: [String])
   -> (pid: pid_t, stdinFD: CInt, stdoutFD: CInt, stderrFD: CInt) {
-#if os(Android)
-  preconditionFailure("posix_spawn doesn't exist on Android")
-#else
   var fileActions = posix_spawn_file_actions_t()
   if swift_posix_spawn_file_actions_init(&fileActions) != 0 {
     preconditionFailure("swift_posix_spawn_file_actions_init() failed")
@@ -145,7 +141,6 @@ public func spawnChild(args: [String])
   }
 
   return (pid, childStdin.writeFD, childStdout.readFD, childStderr.readFD)
-#endif
 }
 
 internal func _readAll(fd: CInt) -> String {

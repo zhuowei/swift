@@ -1033,14 +1033,16 @@ toolchains::Linux::constructInvocation(const LinkJobAction &job,
 
     Arguments.push_back("-lgcc");
     Arguments.push_back("-lc");
-  }
+  } else {
+    // rpaths are not supported on Android.
 
-  // FIXME: We probably shouldn't be adding an rpath here unless we know ahead
-  // of time the standard library won't be copied.
-  Arguments.push_back("-Xlinker");
-  Arguments.push_back("-rpath");
-  Arguments.push_back("-Xlinker");
-  Arguments.push_back(context.Args.MakeArgString(RuntimeLibPath));
+    // FIXME: We probably shouldn't be adding an rpath here unless we know ahead
+    // of time the standard library won't be copied.
+    Arguments.push_back("-Xlinker");
+    Arguments.push_back("-rpath");
+    Arguments.push_back("-Xlinker");
+    Arguments.push_back(context.Args.MakeArgString(RuntimeLibPath));
+  }
 
   // Always add the stdlib
   Arguments.push_back("-lswiftCore");

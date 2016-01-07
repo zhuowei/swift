@@ -110,7 +110,7 @@ var implicitGet3: Int {
 
 // Here we used apply weak to the getter itself, not to the variable.
 var x15: Int {
-  // For the purpose of this test we need to use an attribute that can not be
+  // For the purpose of this test we need to use an attribute that cannot be
   // applied to the getter.
   weak
   var foo: SomeClass? = SomeClass()  // expected-warning {{variable 'foo' was written to, but never read}}
@@ -1138,7 +1138,7 @@ extension rdar17391625derived {
 struct r19874152S1 {
   let number : Int = 42
 }
-_ = r19874152S1(number:64)  // expected-error {{extra argument 'number' in call}}
+_ = r19874152S1(number:64)  // expected-error {{argument passed to call that takes no arguments}}
 _ = r19874152S1()  // Ok
 
 struct r19874152S2 {
@@ -1159,7 +1159,7 @@ _ = r19874152S3()  // expected-error {{missing argument for parameter 'flavour' 
 struct r19874152S4 {
   let number : Int? = nil
 }
-_ = r19874152S4(number:64)  // expected-error {{extra argument 'number' in call}}
+_ = r19874152S4(number:64)  // expected-error {{argument passed to call that takes no arguments}}
 _ = r19874152S4()  // Ok
 
 

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -34,7 +34,6 @@
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/TinyPtrVector.h"
-#include "llvm/ADT/StringMap.h"
 #include "llvm/Support/Allocator.h"
 #include <functional>
 #include <memory>
@@ -281,7 +280,7 @@ public:
   template <typename T>
   typename std::remove_reference<T>::type *AllocateObjectCopy(T &&t,
               AllocationArena arena = AllocationArena::Permanent) const {
-    // This function can not be named AllocateCopy because it would always win
+    // This function cannot be named AllocateCopy because it would always win
     // overload resolution over the AllocateCopy(ArrayRef<T>).
     using TNoRef = typename std::remove_reference<T>::type;
     TNoRef *res = (TNoRef *) Allocate(sizeof(TNoRef), alignof(TNoRef), arena);
@@ -481,6 +480,9 @@ public:
   /// Retrieve the declaration of Swift._unimplemented_initializer.
   FuncDecl *getUnimplementedInitializerDecl(LazyResolver *resolver) const;
 
+  /// Retrieve the declaration of Swift._undefined.
+  FuncDecl *getUndefinedDecl(LazyResolver *resolver) const;
+
   // Retrieve the declaration of Swift._stdlib_isOSVersionAtLeast.
   FuncDecl *getIsOSVersionAtLeastDecl(LazyResolver *resolver) const;
   
@@ -587,7 +589,7 @@ public:
   /// one.
   void loadExtensions(NominalTypeDecl *nominal, unsigned previousGeneration);
 
-  /// \brief Load the methods within the given class that that produce
+  /// \brief Load the methods within the given class that produce
   /// Objective-C class or instance methods with the given selector.
   ///
   /// \param classDecl The class in which we are searching for @objc methods.
@@ -601,7 +603,7 @@ public:
   ///
   /// \param previousGeneration The previous generation with which this
   /// callback was invoked. The list of methods will already contain all of
-  /// the results from generations up and and including \c previousGeneration.
+  /// the results from generations up and including \c previousGeneration.
   ///
   /// \param methods The list of @objc methods in this class that have this
   /// selector and are instance/class methods as requested. This list will be
@@ -788,7 +790,7 @@ public:
 
   /// Collect visible clang modules from the ClangModuleLoader. These modules are
   /// not necessarily loaded.
-  void getVisibleTopLevelClangeModules(SmallVectorImpl<clang::Module*> &Modules) const;
+  void getVisibleTopLevelClangModules(SmallVectorImpl<clang::Module*> &Modules) const;
 
   /// Retrieve or create the stored archetype builder for the given
   /// canonical generic signature and module.

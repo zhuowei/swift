@@ -43,7 +43,7 @@ to perform a simple repo setup for the Swift repository::
 
   $ git config --global user.name "<My Name>"
   $ git config --global user.email "<My Email>"
-  $ mkdir swift-source && cd swift-soure
+  $ mkdir swift-source && cd swift-source
   $ git clone <LLVM_REPO_URL>
   $ git clone <CLANG_REPO_URL>
   $ git clone <SWIFT_REPO_URL>
@@ -114,7 +114,7 @@ By default when updating, Git will attempt to merge the remote changes and your
 local changes. Ignoring what that sentence means, this is not an SVN-esque
 model. Instead we want any local changes that we have to be applied on top of
 any new remote changes. The 'branch.autosetuprebase' flag causes this to be done
-automatically when ever one updates the local repository.
+automatically whenever one updates the local repository.
 
 Update
 ------
@@ -261,7 +261,7 @@ command::
 
   $ git log <REVISION>
 
-To see a oneline summary that includes just the title of the commit and its
+To see an oneline summary that includes just the title of the commit and its
 hash, pass the '--oneline' command::
 
   $ git log --oneline

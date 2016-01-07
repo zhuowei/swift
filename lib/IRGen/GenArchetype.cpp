@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -46,11 +46,15 @@
 #include "ProtocolInfo.h"
 #include "ResilientTypeInfo.h"
 #include "TypeInfo.h"
-#include "UnownedTypeInfo.h"
 #include "WeakTypeInfo.h"
 
 using namespace swift;
 using namespace irgen;
+
+static llvm::Value *emitArchetypeTypeMetadataRef(IRGenFunction &IGF,
+                                                 CanArchetypeType archetype) {
+  return IGF.getLocalTypeData(archetype, LocalTypeDataKind::forMetatype());
+}
 
 namespace {
 
@@ -84,8 +88,9 @@ public:
                                CanArchetypeType archetype,
                                unsigned which) const {
     assert(which < getNumStoredProtocols());
+    auto protocol = archetype->getConformsTo()[which];
     return IGF.getLocalTypeData(archetype,
-                          LocalTypeData::forArchetypeProtocolWitness(which));
+                 LocalTypeDataKind::forArchetypeProtocolWitnessTable(protocol));
   }
 };
 
@@ -180,6 +185,38 @@ llvm::Value *irgen::emitWitnessTableRef(IRGenFunction &IGF,
   return wtable;
 }
 
+llvm::Value *irgen::emitAssociatedTypeMetadataRef(IRGenFunction &IGF,
+                                                  CanArchetypeType origin,
+                                               AssociatedTypeDecl *associate) {
+  // Find the conformance of the origin to the associated type's protocol.
+  llvm::Value *wtable = emitWitnessTableRef(IGF, origin,
+                                            associate->getProtocol());
+
+  // Find the origin's type metadata.
+  llvm::Value *originMetadata = emitArchetypeTypeMetadataRef(IGF, origin);
+
+  return emitAssociatedTypeMetadataRef(IGF, originMetadata, wtable, associate);
+}
+
+llvm::Value *
+irgen::emitAssociatedTypeWitnessTableRef(IRGenFunction &IGF,
+                                         CanArchetypeType origin,
+                                         AssociatedTypeDecl *associate,
+                                         llvm::Value *associateMetadata,
+                                         ProtocolDecl *associateProtocol) {
+  // Find the conformance of the origin to the associated type's protocol.
+  llvm::Value *wtable = emitWitnessTableRef(IGF, origin,
+                                            associate->getProtocol());
+
+  // Find the origin's type metadata.
+  llvm::Value *originMetadata = emitArchetypeTypeMetadataRef(IGF, origin);
+
+  // FIXME: will this ever be an indirect requirement?
+  return emitAssociatedTypeWitnessTableRef(IGF, originMetadata, wtable,
+                                           associate, associateMetadata,
+                                           associateProtocol);
+}
+
 const TypeInfo *TypeConverter::convertArchetypeType(ArchetypeType *archetype) {
   assert(isExemplarArchetype(archetype) && "lowering non-exemplary archetype");
 
@@ -238,7 +275,7 @@ static void setMetadataRef(IRGenFunction &IGF,
                            llvm::Value *metadata) {
   assert(metadata->getType() == IGF.IGM.TypeMetadataPtrTy);
   IGF.setUnscopedLocalTypeData(CanType(archetype),
-                               LocalTypeData::forMetatype(),
+                               LocalTypeDataKind::forMetatype(),
                                metadata);
 
   // Create a shadow copy of the metadata in an alloca for the debug info.
@@ -262,8 +299,10 @@ static void setWitnessTable(IRGenFunction &IGF,
                             llvm::Value *wtable) {
   assert(wtable->getType() == IGF.IGM.WitnessTablePtrTy);
   assert(protocolIndex < archetype->getConformsTo().size());
+  auto protocol = archetype->getConformsTo()[protocolIndex];
   IGF.setUnscopedLocalTypeData(CanType(archetype),
-             LocalTypeData::forArchetypeProtocolWitness(protocolIndex), wtable);
+                  LocalTypeDataKind::forArchetypeProtocolWitnessTable(protocol),
+                               wtable);
 }
 
 /// Inform IRGenFunction that the given archetype has the given value
@@ -300,8 +339,7 @@ llvm::Value *irgen::emitDynamicTypeOfOpaqueArchetype(IRGenFunction &IGF,
   auto archetype = type.castTo<ArchetypeType>();
 
   // Acquire the archetype's static metadata.
-  llvm::Value *metadata = IGF.getLocalTypeData(archetype,
-                                               LocalTypeData::forMetatype());
+  llvm::Value *metadata = emitArchetypeTypeMetadataRef(IGF, archetype);
   return IGF.Builder.CreateCall(IGF.IGM.getGetDynamicTypeFn(),
                                 {addr.getAddress(), metadata});
 }

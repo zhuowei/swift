@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -194,6 +194,10 @@ enum class TypeCheckExprFlags {
   /// statement. This should only be used for syntactic restrictions, and should
   /// not affect type checking itself.
   IsExprStmt = 0x20,
+  
+  /// If set, this expression is being re-type checked as part of diagnostics,
+  /// and so we should not visit bodies of non-single expression closures.
+  SkipMultiStmtClosures = 0x40,
 };
   
 typedef OptionSet<TypeCheckExprFlags> TypeCheckExprOptions;
@@ -297,9 +301,6 @@ enum TypeResolutionFlags : unsigned {
   /// Whether to allow unspecified types within a pattern.
   TR_AllowUnspecifiedTypes = 0x01,
 
-  /// Whether the pattern is variadic.
-  TR_Variadic = 0x02,
-
   /// Whether the given type can override the type of a typed pattern.
   TR_OverrideType = 0x04,
 
@@ -315,9 +316,6 @@ enum TypeResolutionFlags : unsigned {
   
   /// Whether this is the immediate input type to a function type,
   TR_ImmediateFunctionInput = 0x40,
-
-  /// Whether we are in the result type of a function type.
-  TR_FunctionResult = 0x80,
 
   /// Whether we are in the result type of a function body that is
   /// known to produce dynamic Self.
@@ -365,6 +363,9 @@ enum TypeResolutionFlags : unsigned {
   /// Whether we should resolve only the structure of the resulting
   /// type rather than its complete semantic properties.
   TR_ResolveStructure = 0x100000,
+
+  /// Whether this is the type of an editor placeholder.
+  TR_EditorPlaceholder = 0x200000,
 };
 
 /// Option set describing how type resolution should work.
@@ -380,7 +381,6 @@ static inline TypeResolutionOptions
 withoutContext(TypeResolutionOptions options) {
   options -= TR_ImmediateFunctionInput;
   options -= TR_FunctionInput;
-  options -= TR_FunctionResult;
   options -= TR_EnumCase;
   return options;
 }
@@ -778,9 +778,9 @@ public:
   /// \brief Determine whether a constraint of the given kind can be satisfied
   /// by the two types.
   ///
-  /// \param t1 The first type of the constrant.
+  /// \param t1 The first type of the constraint.
   ///
-  /// \param t2 The second type of the constrant.
+  /// \param t2 The second type of the constraint.
   ///
   /// \param dc The context of the conversion.
   ///
@@ -1140,7 +1140,7 @@ public:
   ///                       of printing diagnostics.
   ///
   /// \returns a CheckedCastKind indicating the semantics of the cast. If the
-  /// cast is invald, Unresolved is returned. If the cast represents an implicit
+  /// cast is invalid, Unresolved is returned. If the cast represents an implicit
   /// conversion, Coercion is returned.
   CheckedCastKind typeCheckCheckedCast(Type fromType,
                                        Type toType,
@@ -1201,6 +1201,11 @@ public:
 
   bool typeCheckCatchPattern(CatchStmt *S, DeclContext *dc);
 
+  /// Type check a parameter list.
+  bool typeCheckParameterList(ParameterList *PL, DeclContext *dc,
+                              TypeResolutionOptions options,
+                              GenericTypeResolver *resolver = nullptr);
+  
   /// Coerce a pattern to the given type.
   ///
   /// \param P The pattern, which may be modified by this coercion.
@@ -1216,6 +1221,13 @@ public:
   bool typeCheckExprPattern(ExprPattern *EP, DeclContext *DC,
                             Type type);
 
+  /// Coerce the specified parameter list of a ClosureExpr to the specified
+  /// contextual type.
+  ///
+  /// \returns true if an error occurred, false otherwise.
+  bool coerceParameterListToType(ParameterList *P, DeclContext *dc, Type type);
+
+  
   /// Type-check an initialized variable pattern declaration.
   bool typeCheckBinding(Pattern *&P, Expr *&Init, DeclContext *DC);
   bool typeCheckPatternBinding(PatternBindingDecl *PBD, unsigned patternNumber);
@@ -1481,8 +1493,7 @@ public:
   /// marked as unavailable, either through "unavailable" or "obsoleted=".
   bool diagnoseExplicitUnavailability(const ValueDecl *D,
                                       SourceRange R,
-                                      const DeclContext *DC,
-                                      const Expr *ParentExpr);
+                                      const DeclContext *DC);
   
   /// @}
 
@@ -1583,7 +1594,7 @@ public:
   /// @{
 
   /// \brief Returns true if the availability of the overriding declaration
-  /// makes it a safe override, given the availability of the base declation.
+  /// makes it a safe override, given the availability of the base declaration.
   bool isAvailabilitySafeForOverride(ValueDecl *override, ValueDecl *base);
 
   /// \brief Returns true if the availability of the witness
@@ -1596,7 +1607,7 @@ public:
                                         VersionRange &requiredRange);
 
   /// Returns an over-approximation of the range of operating system versions
-  /// that could  the passed-in location location could be executing upon for
+  /// that could the passed-in location could be executing upon for
   /// the target platform.
   VersionRange overApproximateOSVersionsAtLocation(SourceLoc loc,
                                                    const DeclContext *DC);
@@ -1682,10 +1693,14 @@ public:
   static const AvailableAttr *getDeprecated(const Decl *D);
 
   /// Emits a diagnostic for a reference to a declaration that is deprecated.
+  /// Callers can provide a lambda that adds additional information (such as a
+  /// fixit hint) to the deprecation diagnostic, if it is emitted.
   void diagnoseDeprecated(SourceRange SourceRange,
                           const DeclContext *ReferenceDC,
                           const AvailableAttr *Attr,
-                          DeclName Name);
+                          DeclName Name,
+              std::function<void(InFlightDiagnostic&)> extraInfoHandler =
+                          [](InFlightDiagnostic&){});
   /// @}
 
   /// If LangOptions::DebugForbidTypecheckPrefix is set and the given decl

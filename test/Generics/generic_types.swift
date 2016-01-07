@@ -195,7 +195,8 @@ func useNested(ii: Int, hni: HasNested<Int>,
   typealias HNI = HasNested<Int>
   var id = hni.f(1, u: 3.14159)
   id = (2, 3.14159)
-  hni.f(1.5, 3.14159) // expected-error{{cannot convert value of type 'Double' to expected argument type 'Int'}}
+  hni.f(1.5, 3.14159) // expected-error{{missing argument label 'u:' in call}}
+  hni.f(1.5, u: 3.14159) // expected-error{{cannot convert value of type 'Double' to expected argument type 'Int'}}
 
   // Generic constructor of a generic struct
   HNI(1, 2.71828) // expected-warning{{unused}}
@@ -322,3 +323,12 @@ class X6<T> {
     init(_ value: T2) {}
   }
 }
+
+// Invalid inheritance clause
+
+struct UnsolvableInheritance1<T : T.A> {}
+// expected-error@-1 {{inheritance from non-protocol, non-class type 'T.A'}}
+
+struct UnsolvableInheritance2<T : U.A, U : T.A> {}
+// expected-error@-1 {{inheritance from non-protocol, non-class type 'U.A'}}
+// expected-error@-2 {{inheritance from non-protocol, non-class type 'T.A'}}

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -62,9 +62,10 @@ Code *Code::create(MarkupContext &MC, StringRef LiteralContent) {
   return new (Mem) Code(LiteralContent);
 }
 
-CodeBlock *CodeBlock::create(MarkupContext &MC, StringRef LiteralContent) {
+CodeBlock *CodeBlock::create(MarkupContext &MC, StringRef LiteralContent,
+                             StringRef Language) {
   void *Mem = MC.allocate(sizeof(CodeBlock), alignof(CodeBlock));
-  return new (Mem) CodeBlock(LiteralContent);
+  return new (Mem) CodeBlock(LiteralContent, Language);
 }
 
 List::List(ArrayRef<MarkupASTNode *> Children, bool IsOrdered)
@@ -357,11 +358,11 @@ void llvm::markup::dump(const MarkupASTNode *Node, llvm::raw_ostream &OS,
                         unsigned indent) {
   auto dumpChildren = [](const ArrayRef<const MarkupASTNode *> Children,
                          llvm::raw_ostream &OS, unsigned indent) {
-    OS << "\n";
+    OS << '\n';
     for (auto Child = Children.begin(); Child != Children.end(); Child++) {
       llvm::markup::dump(*Child, OS, indent + 1);
       if (Child != Children.end() - 1)
-        OS << "\n";
+        OS << '\n';
     }
   };
 
@@ -390,10 +391,10 @@ void llvm::markup::dump(const MarkupASTNode *Node, llvm::raw_ostream &OS,
   };
 
   for (unsigned i = 0; i < indent; ++i) {
-    OS << " ";
+    OS << ' ';
   }
 
-  OS << "(";
+  OS << '(';
   switch (Node->getKind()) {
   case llvm::markup::ASTNodeKind::Document: {
     OS << "Document: Children=" << Node->getChildren().size();
@@ -460,7 +461,10 @@ void llvm::markup::dump(const MarkupASTNode *Node, llvm::raw_ostream &OS,
   }
   case llvm::markup::ASTNodeKind::CodeBlock: {
     auto CB = cast<CodeBlock>(Node);
-    OS << "CodeBlock: Content=";
+    OS << "CodeBlock: ";
+    OS << "Language=";
+    simpleEscapingPrint(CB->getLanguage(), OS);
+    OS << " Content=";
     simpleEscapingPrint(CB->getLiteralContent(), OS);
     break;
   }
@@ -485,7 +489,7 @@ void llvm::markup::dump(const MarkupASTNode *Node, llvm::raw_ostream &OS,
     auto L = cast<Link>(Node);
     OS << "Link: Destination=";
     simpleEscapingPrint(L->getDestination(), OS);
-    OS << " " << "Children=" << L->getChildren().size();
+    OS << ' ' << "Children=" << L->getChildren().size();
     dumpChildren(Node->getChildren(), OS, indent + 1);
     break;
   }
@@ -493,7 +497,7 @@ void llvm::markup::dump(const MarkupASTNode *Node, llvm::raw_ostream &OS,
     auto I = cast<Image>(Node);
     OS << "Image: Destination=";
     simpleEscapingPrint(I->getDestination(), OS);
-    OS << " " << "Children=" << I->getChildren().size();
+    OS << ' ' << "Children=" << I->getChildren().size();
     dumpChildren(Node->getChildren(), OS, indent + 1);
     break;
   }
@@ -518,5 +522,5 @@ void llvm::markup::dump(const MarkupASTNode *Node, llvm::raw_ostream &OS,
   default:
     llvm_unreachable("Can't dump Markup AST Node: unknown node kind");
   }
-  OS << ")";
+  OS << ')';
 }

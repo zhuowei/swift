@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -22,7 +22,6 @@
 #include <cstring>
 #include <new>
 #include <string>
-#include <regex>
 #include <dlfcn.h>
 
 #if SWIFT_OBJC_INTEROP
@@ -309,6 +308,7 @@ void swift_MagicMirrorData_summary(const Metadata *T, String *result) {
       new (result) String("(Struct)");
       break;
     case MetadataKind::Enum:
+    case MetadataKind::Optional:
       new (result) String("(Enum Value)");
       break;
     case MetadataKind::Opaque:
@@ -381,6 +381,7 @@ recur:
   case MetadataKind::Class:
   case MetadataKind::Opaque:
   case MetadataKind::Enum:
+  case MetadataKind::Optional:
   case MetadataKind::Function:
   case MetadataKind::Metatype:
     break;
@@ -596,7 +597,7 @@ const char *swift_EnumMirror_caseName(HeapObject *owner,
                                       const OpaqueValue *value,
                                       const Metadata *type) {
   if (!isEnumReflectable(type))
-    return NULL;
+    return nullptr;
 
   const auto Enum = static_cast<const EnumMetadata *>(type);
   const auto &Description = Enum->Description->Enum;
@@ -658,18 +659,6 @@ StringMirrorTuple swift_EnumMirror_subscript(intptr_t i,
 }
   
 // -- Class destructuring.
-static bool classHasSuperclass(const ClassMetadata *c) {
-#if SWIFT_OBJC_INTEROP
-  // A class does not have a superclass if its ObjC superclass is the
-  // "SwiftObject" root class.
-  return c->SuperClass
-    && (Class)c->SuperClass != NSClassFromString(@"SwiftObject");
-#else
-  // In non-objc mode, the test is just if it has a non-null superclass.
-  return c->SuperClass != nullptr;
-#endif
-}
-
 static Mirror getMirrorForSuperclass(const ClassMetadata *sup,
                                      HeapObject *owner,
                                      const OpaqueValue *value,
@@ -1149,6 +1138,7 @@ getImplementationForType(const Metadata *T, const OpaqueValue *Value) {
         T, &StructMirrorMetadata, &StructMirrorWitnessTable);
       
   case MetadataKind::Enum:
+  case MetadataKind::Optional:
     return std::make_tuple(
         T, &EnumMirrorMetadata, &EnumMirrorWitnessTable);
 
@@ -1263,4 +1253,18 @@ MirrorReturn swift::swift_reflectAny(OpaqueValue *value, const Metadata *T) {
   if (!take)
     T->vw_destroy(value);
   return MirrorReturn(result);
+}
+
+// NB: This function is not used directly in the Swift codebase, but is
+// exported for Xcode support. Please coordinate before changing.
+extern "C" void swift_stdlib_demangleName(const char *mangledName,
+                                          size_t mangledNameLength,
+                                          String *demangledName) {
+  auto options = Demangle::DemangleOptions();
+  options.DisplayDebuggerGeneratedModule = false;
+  auto result =
+      Demangle::demangleSymbolAsString(mangledName,
+                                       mangledNameLength,
+                                       options);
+  new (demangledName) String(result.data(), result.size());
 }

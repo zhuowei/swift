@@ -16,6 +16,11 @@ import SwiftPrivatePthreadExtras
 #if _runtime(_ObjC)
 import ObjectiveC
 #endif
+#if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
+import Darwin
+#elseif os(Linux)
+import Glibc
+#endif
 
 final class HeapBool {
   var value: Bool
@@ -725,7 +730,7 @@ struct AtomicInitializeARCRefRaceTest : RaceTestWithPerTrialDataType {
   ) -> Observation {
     var observation = Observation4UInt(0, 0, 0, 0)
     var initializerDestroyed = HeapBool(false)
-    if true {
+    do {
       let initializer = DummyObject(
         destroyedFlag: initializerDestroyed,
         randomInt: threadLocalData.randomInt())
@@ -767,10 +772,10 @@ struct AtomicInitializeARCRefRaceTest : RaceTestWithPerTrialDataType {
       switch (observation.data1, observation.data4) {
       case (1, 0):
         // Won race, value not destroyed.
-        ++wonRace
+        wonRace += 1
       case (0, 1):
         // Lost race, value destroyed.
-        ++lostRace
+        lostRace += 1
       default:
         sink(.FailureInteresting(String(observation)))
       }

@@ -15,7 +15,6 @@ Reference Counting Instructions
 ===============================
 
 - strong_retain
-- strong_retain_autoreleased
 - strong_release
 - strong_retain_unowned
 - unowned_retain
@@ -151,7 +150,7 @@ referent. Consider the following sequence of rules:
     is deallocated.
 
 (3) A different source-level variable pointing at the same referent
-    must not be changed/invalidated by such a call
+    must not be changed/invalidated by such a call.
 
 (4) If such a variable exists, the compiler must guarantee the
     refcount is > 1 going into the call.
@@ -229,3 +228,22 @@ These builtins perform an implicit cast to NativeObject before
 checking uniqueness. There’s no way at SIL level to cast the address
 of a reference, so we need to encapsulate this operation as part of
 the builtin.
+
+Semantic Tags
+=============
+
+ARC takes advantage of certain semantic tags. This section documents these
+semantics and their meanings.
+
+arc.programtermination_point
+----------------------------
+
+If this semantic tag is applied to a function, then we know that:
+
+- The function does not touch any reference counted objects.
+- After the function is executed, all reference counted objects are leaked
+  (most likely in preparation for program termination).
+
+This allows one, when performing ARC code motion, to ignore blocks that contain
+an apply to this function as long as the block does not have any other side
+effect having instructions.

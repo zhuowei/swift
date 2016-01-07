@@ -1,8 +1,8 @@
-//===- DiagnosticsSILAnalysis.def - Diagnostics Text ------------*- C++ -*-===//
+//===--- DiagnosticsSIL.def - Diagnostics Text ------------------*- C++ -*-===//
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -97,7 +97,7 @@ ERROR(variable_used_before_initialized,sil_analysis,none,
 ERROR(variable_inout_before_initialized,sil_analysis,none,
       "%select{variable|constant}1 '%0' passed by reference before being"
       " initialized", (StringRef, bool))
-ERROR(variable_escape_before_initialized,sil_analysis,none,
+ERROR(variable_closure_use_uninit,sil_analysis,none,
       "%select{variable|constant}1 '%0' captured by a closure before being"
       " initialized", (StringRef, bool))
 
@@ -145,7 +145,7 @@ ERROR(return_from_init_without_initing_stored_properties,sil_analysis,none,
       "return from initializer without initializing all"
       " stored properties", ())
 
-ERROR(global_variable_function_use_uninit,sil_analysis,none,
+ERROR(variable_function_use_uninit,sil_analysis,none,
       "%select{variable|constant}1 '%0' used by function definition before"
       " being initialized",
       (StringRef, bool))

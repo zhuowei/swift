@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -74,10 +74,10 @@ template <typename T> inline T &Lazy<T>::get(void (*initCallback)(void*)) {
 } // namespace swift
 
 #define SWIFT_LAZY_CONSTANT(INITIAL_VALUE) \
-  ({ \
+  ([]{ \
     using T = ::std::remove_reference<decltype(INITIAL_VALUE)>::type; \
     static ::swift::Lazy<T> TheLazy; \
-    TheLazy.get([](void *ValueAddr){ ::new(ValueAddr) T{INITIAL_VALUE}; });\
-  })
+    return TheLazy.get([](void *ValueAddr){ ::new(ValueAddr) T{INITIAL_VALUE}; });\
+  }())
 
 #endif // SWIFT_BASIC_LAZY_H

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -75,7 +75,7 @@ namespace llvm {
 }
 
 template <typename Fn>
-void swift::driver::types::forAllTypes(const Fn &fn)  {
+void swift::driver::types::forAllTypes(const Fn &fn) {
   static_assert(std::is_constructible<std::function<void(types::ID)>,Fn>::value,
                 "must have the signature 'void(types::ID)'");
   for (uint8_t i = 0; i < static_cast<uint8_t>(TY_INVALID); ++i)

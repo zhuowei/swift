@@ -26,6 +26,28 @@ import Foundation
   @objc func acceptPlainEnum(_: NSMalformedEnumMissingTypedef) {}
 }
 
+// CHECK-LABEL: typedef SWIFT_ENUM_NAMED(NSInteger, ObjcEnumNamed, "EnumNamed") {
+// CHECK-NEXT:   ObjcEnumNamedA = 0,
+// CHECK-NEXT:   ObjcEnumNamedB = 1,
+// CHECK-NEXT:   ObjcEnumNamedC = 2,
+// CHECK-NEXT: };
+
+@objc(ObjcEnumNamed) enum EnumNamed: Int {
+  case A, B, C
+}
+
+// CHECK-LABEL: typedef SWIFT_ENUM(NSInteger, EnumWithNamedConstants) {
+// CHECK-NEXT:   kEnumA SWIFT_COMPILE_NAME("A") = 0,
+// CHECK-NEXT:   kEnumB SWIFT_COMPILE_NAME("B") = 1,
+// CHECK-NEXT:   kEnumC SWIFT_COMPILE_NAME("C") = 2,
+// CHECK-NEXT: };
+
+@objc enum EnumWithNamedConstants: Int {
+  @objc(kEnumA) case A
+  @objc(kEnumB) case B
+  @objc(kEnumC) case C
+}
+
 // CHECK-LABEL: typedef SWIFT_ENUM(unsigned int, ExplicitValues) {
 // CHECK-NEXT:   ExplicitValuesZim = 0,
 // CHECK-NEXT:   ExplicitValuesZang = 219,
@@ -68,7 +90,7 @@ import Foundation
 // CHECK-NEXT:   SomeErrorTypeBadness = 9001,
 // CHECK-NEXT:   SomeErrorTypeWorseness = 9002,
 // CHECK-NEXT: };
-// CHECK-NEXT: static NSString * __nonnull const SomeErrorTypeDomain = @"enums.SomeErrorType";
+// CHECK-NEXT: static NSString * _Nonnull const SomeErrorTypeDomain = @"enums.SomeErrorType";
 @objc enum SomeErrorType: Int, ErrorType {
   case Badness = 9001
   case Worseness
@@ -77,7 +99,7 @@ import Foundation
 // CHECK-LABEL: typedef SWIFT_ENUM(NSInteger, SomeOtherErrorType) {
 // CHECK-NEXT:   SomeOtherErrorTypeDomain = 0,
 // CHECK-NEXT: };
-// NEGATIVE-NOT: NSString * __nonnull const SomeOtherErrorTypeDomain
+// NEGATIVE-NOT: NSString * _Nonnull const SomeOtherErrorTypeDomain
 @objc enum SomeOtherErrorType: Int, ErrorType {
   case Domain // collision!
 }

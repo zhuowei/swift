@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -16,7 +16,6 @@
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
 #include <functional>
 
@@ -34,7 +33,7 @@ STATISTIC(NumFuncLinked, "Number of SIL functions linked");
 static bool shouldImportFunction(SILFunction *F) {
   // Skip functions that are marked with the 'no import' tag. These
   // are functions that we don't want to copy from the module.
-  if (F->hasSemanticsString("stdlib_binary_only")) {
+  if (F->hasSemanticsAttr("stdlib_binary_only")) {
     // If we are importing a function declaration mark it as external since we
     // are not importing the body.
     if (F->isExternalDeclaration())
@@ -63,9 +62,6 @@ bool SILLinkerVisitor::processFunction(SILFunction *F) {
 
     if (!NewFn || NewFn->isExternalDeclaration())
       return false;
-
-    if (Callback)
-      Callback(NewFn);
 
     F = NewFn;
   }
@@ -98,10 +94,6 @@ bool SILLinkerVisitor::processDeclRef(SILDeclRef Decl) {
     return false;
   }
 
-  // Notify client of new deserialized function.
-  if (Callback)
-    Callback(NewFn);
-
   ++NumFuncLinked;
 
   // Try to transitively deserialize everything referenced by NewFn.
@@ -122,10 +114,6 @@ bool SILLinkerVisitor::processFunction(StringRef Name) {
 
   if (!NewFn || NewFn->isExternalDeclaration())
     return false;
-
-  // Notify client of new deserialized function.
-  if (Callback)
-    Callback(NewFn);
 
   ++NumFuncLinked;
 
@@ -168,7 +156,7 @@ SILVTable *SILLinkerVisitor::processClassDecl(const ClassDecl *C) {
 
 bool SILLinkerVisitor::linkInVTable(ClassDecl *D) {
   // Attempt to lookup the Vtbl from the SILModule.
-  SILVTable *Vtbl = Mod.lookUpVTable(D, Callback);
+  SILVTable *Vtbl = Mod.lookUpVTable(D);
 
   // If the SILModule does not have the VTable, attempt to deserialize the
   // VTable. If we fail to do that as well, bail.
@@ -363,25 +351,6 @@ bool SILLinkerVisitor::process() {
             if (!shouldImportFunction(F))
               continue;
 
-            // The ExternalSource may wish to rewrite non-empty bodies.
-            if (!F->isExternalDeclaration() && ExternalSource) {
-              if (auto *NewFn = ExternalSource->lookupSILFunction(F)) {
-                if (NewFn->isExternalDeclaration())
-                  continue;
-
-                NewFn->verify();
-                Worklist.push_back(NewFn);
-
-                // Notify client of new deserialized function.
-                if (Callback)
-                  Callback(NewFn);
-
-                ++NumFuncLinked;
-                Result = true;
-                continue;
-              }
-            }
-
             DEBUG(llvm::dbgs() << "Imported function: "
                                << F->getName() << "\n");
             F->setBare(IsBare);
@@ -394,10 +363,6 @@ bool SILLinkerVisitor::process() {
                 NewFn->verify();
                 Worklist.push_back(NewFn);
                 Result = true;
-
-                // Notify client of new deserialized function.
-                if (Callback)
-                  Callback(NewFn);
 
                 ++NumFuncLinked;
               }

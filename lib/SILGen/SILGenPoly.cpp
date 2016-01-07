@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -49,7 +49,7 @@
 // parameter of the base with a concrete type, the derived class can override
 // methods in the base that involved generic types. In the derived class, a
 // method override that involves substituted types will have a different
-// SIL lowering than the base method. In this case, the overriden vtable entry
+// SIL lowering than the base method. In this case, the overridden vtable entry
 // will point to a thunk which transforms parameters and results and invokes
 // the derived method.
 //
@@ -640,6 +640,7 @@ static ManagedValue manageParam(SILGenFunction &gen,
       return gen.emitManagedBufferWithCleanup(copy);
     }
   case ParameterConvention::Indirect_Inout:
+  case ParameterConvention::Indirect_InoutAliasable:
     return ManagedValue::forLValue(paramValue);
   case ParameterConvention::Indirect_In:
     return gen.emitManagedBufferWithCleanup(paramValue);
@@ -1124,6 +1125,10 @@ namespace {
         Outputs.push_back(temp->getManagedAddress());
         return;
       }
+      case ParameterConvention::Indirect_InoutAliasable: {
+        llvm_unreachable("abstraction difference in aliasable argument not "
+                         "allowed");
+      }
       }
 
       llvm_unreachable("Covered switch isn't covered?!");
@@ -1237,10 +1242,7 @@ static SILValue getThunkResult(SILGenFunction &gen,
   if (!fTy->hasIndirectResult()) {
     switch (fTy->getResult().getConvention()) {
     case ResultConvention::Owned:
-      break;
     case ResultConvention::Autoreleased:
-      innerResultValue =
-        gen.B.createStrongRetainAutoreleased(loc, innerResultValue);
       break;
     case ResultConvention::UnownedInnerPointer:
       // FIXME: We can't reasonably lifetime-extend an inner-pointer result
@@ -1308,7 +1310,7 @@ static SILValue getThunkResult(SILGenFunction &gen,
 /// \param inputOrigType Abstraction pattern of function value being thunked
 /// \param inputSubstType Formal AST type of function value being thunked
 /// \param outputOrigType Abstraction pattern of the thunk
-/// \param outputSubstType Formal AST type of the thuk
+/// \param outputSubstType Formal AST type of the thunk
 static void buildThunkBody(SILGenFunction &gen, SILLocation loc,
                            AbstractionPattern inputOrigType,
                            CanAnyFunctionType inputSubstType,

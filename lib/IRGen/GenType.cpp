@@ -1,8 +1,8 @@
-//===--- GenTypes.cpp - Swift IR Generation For Types ---------------------===//
+//===--- GenType.cpp - Swift IR Generation For Types ----------------------===//
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -40,7 +40,6 @@
 #include "ProtocolInfo.h"
 #include "ReferenceTypeInfo.h"
 #include "ScalarTypeInfo.h"
-#include "UnownedTypeInfo.h"
 #include "WeakTypeInfo.h"
 
 using namespace swift;
@@ -49,6 +48,24 @@ using namespace irgen;
 llvm::DenseMap<TypeBase*, TypeCacheEntry> &
 TypeConverter::Types_t::getCacheFor(TypeBase *t) {
   return t->hasTypeParameter() ? DependentCache : IndependentCache;
+}
+
+void TypeInfo:: assign(IRGenFunction &IGF, Address dest, Address src,
+                       IsTake_t isTake, SILType T) const {
+  if (isTake) {
+    assignWithTake(IGF, dest, src, T);
+  } else {
+    assignWithCopy(IGF, dest, src, T);
+  }
+}
+
+void TypeInfo::initialize(IRGenFunction &IGF, Address dest, Address src,
+                          IsTake_t isTake, SILType T) const {
+  if (isTake) {
+    initializeWithTake(IGF, dest, src, T);
+  } else {
+    initializeWithCopy(IGF, dest, src, T);
+  }
 }
 
 Address TypeInfo::initializeBufferWithTake(IRGenFunction &IGF,
@@ -153,12 +170,14 @@ void TypeInfo::destroyArray(IRGenFunction &IGF, Address array,
   auto elementVal = IGF.Builder.CreatePHI(array.getType(), 2);
   elementVal->addIncoming(array.getAddress(), entry);
   Address element(elementVal, array.getAlignment());
-  
+ 
   auto done = IGF.Builder.CreateICmpEQ(counter,
                                      llvm::ConstantInt::get(IGF.IGM.SizeTy, 0));
   IGF.Builder.CreateCondBr(done, exit, loop);
   
   IGF.Builder.emitBlock(loop);
+  ConditionalDominanceScope condition(IGF);
+
   destroy(IGF, element, T);
   auto nextCounter = IGF.Builder.CreateSub(counter,
                                    llvm::ConstantInt::get(IGF.IGM.SizeTy, 1));
@@ -197,16 +216,14 @@ void irgen::emitInitializeArrayFrontToBack(IRGenFunction &IGF,
   srcVal->addIncoming(srcArray.getAddress(), entry);
   Address dest(destVal, destArray.getAlignment());
   Address src(srcVal, srcArray.getAlignment());
-  
+
   auto done = IGF.Builder.CreateICmpEQ(counter,
                                        llvm::ConstantInt::get(IGM.SizeTy, 0));
   IGF.Builder.CreateCondBr(done, exit, loop);
   
   IGF.Builder.emitBlock(loop);
-  if (take)
-    type.initializeWithTake(IGF, dest, src, T);
-  else
-    type.initializeWithCopy(IGF, dest, src, T);
+  ConditionalDominanceScope condition(IGF);
+  type.initialize(IGF, dest, src, take, T);
 
   auto nextCounter = IGF.Builder.CreateSub(counter,
                                    llvm::ConstantInt::get(IGM.SizeTy, 1));
@@ -251,21 +268,19 @@ void irgen::emitInitializeArrayBackToFront(IRGenFunction &IGF,
   srcVal->addIncoming(srcEnd.getAddress(), entry);
   Address dest(destVal, destArray.getAlignment());
   Address src(srcVal, srcArray.getAlignment());
-  
+
   auto done = IGF.Builder.CreateICmpEQ(counter,
                                        llvm::ConstantInt::get(IGM.SizeTy, 0));
   IGF.Builder.CreateCondBr(done, exit, loop);
   
   IGF.Builder.emitBlock(loop);
+  ConditionalDominanceScope condition(IGF);
   auto prevDest = type.indexArray(IGF, dest,
                               llvm::ConstantInt::getSigned(IGM.SizeTy, -1), T);
   auto prevSrc = type.indexArray(IGF, src,
                               llvm::ConstantInt::getSigned(IGM.SizeTy, -1), T);
   
-  if (take)
-    type.initializeWithTake(IGF, prevDest, prevSrc, T);
-  else
-    type.initializeWithCopy(IGF, prevDest, prevSrc, T);
+  type.initialize(IGF, prevDest, prevSrc, take, T);
   
   auto nextCounter = IGF.Builder.CreateSub(counter,
                                    llvm::ConstantInt::get(IGM.SizeTy, 1));
@@ -537,6 +552,7 @@ FixedTypeInfo::getSpareBitExtraInhabitantIndex(IRGenFunction &IGF,
   IGF.Builder.CreateCondBr(isValid, endBB, spareBB);
 
   IGF.Builder.emitBlock(spareBB);
+  ConditionalDominanceScope condition(IGF);
   
   // Gather the occupied bits.
   auto OccupiedBits = SpareBits;
@@ -662,7 +678,7 @@ namespace {
   };
   
   /// A TypeInfo implementation for opaque storage. Swift will preserve any
-  /// data stored into this arbitarily sized and aligned field, but doesn't
+  /// data stored into this arbitrarily sized and aligned field, but doesn't
   /// know anything about the data.
   class OpaqueStorageTypeInfo final :
     public ScalarTypeInfo<OpaqueStorageTypeInfo, LoadableTypeInfo>
@@ -2031,8 +2047,9 @@ SILType irgen::getSingletonAggregateFieldType(IRGenModule &IGM,
 
     // If there's only one stored property, we have the layout of its field.
     auto allFields = structDecl->getStoredProperties();
+    
     auto field = allFields.begin();
-    if (std::next(field) == allFields.end())
+    if (!allFields.empty() && std::next(field) == allFields.end())
       return t.getFieldType(*field, *IGM.SILMod);
 
     return SILType();
@@ -2040,8 +2057,9 @@ SILType irgen::getSingletonAggregateFieldType(IRGenModule &IGM,
 
   if (auto enumDecl = t.getEnumOrBoundGenericEnum()) {
     auto allCases = enumDecl->getAllElements();
+    
     auto theCase = allCases.begin();
-    if (std::next(theCase) == allCases.end()
+    if (!allCases.empty() && std::next(theCase) == allCases.end()
         && (*theCase)->hasArgumentType())
       return t.getEnumElementType(*theCase, *IGM.SILMod);
 

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -14,7 +14,6 @@
 #include "swift/SIL/SILModule.h"
 #include "Linker.h"
 #include "swift/SIL/SILDebugScope.h"
-#include "swift/SIL/SILExternalSource.h"
 #include "swift/SIL/SILVisitor.h"
 #include "swift/Serialization/SerializedSILLoader.h"
 #include "swift/SIL/SILValue.h"
@@ -43,9 +42,6 @@ namespace swift {
     }
   };
 } // end namespace swift.
-
-void SILExternalSource::anchor() {
-}
 
 /// SILTypeListUniquingType - This is the type of the folding set maintained by
 /// SILModule that these things are uniqued into.
@@ -124,11 +120,26 @@ SILModule::~SILModule() {
   delete (SILTypeListUniquingType*)TypeListUniquing;
 }
 
+void *SILModule::allocate(unsigned Size, unsigned Align) const {
+  if (getASTContext().LangOpts.UseMalloc)
+    return AlignedAlloc(Size, Align);
+
+  return BPA.Allocate(Size, Align);
+}
+
+void *SILModule::allocateInst(unsigned Size, unsigned Align) const {
+  return AlignedAlloc(Size, Align);
+}
+
+void SILModule::deallocateInst(SILInstruction *I) {
+  AlignedFree(I);
+}
+
 SILWitnessTable *
 SILModule::createWitnessTableDeclaration(ProtocolConformance *C,
                                          SILLinkage linkage) {
   // If we are passed in a null conformance (a valid value), just return nullptr
-  // since we can not map a witness table to it.
+  // since we cannot map a witness table to it.
   if (!C)
     return nullptr;
 
@@ -247,7 +258,7 @@ static SILFunction::ClassVisibility_t getClassVisibility(SILDeclRef constant) {
   if (!constant.hasDecl())
     return SILFunction::NotRelevant;
 
-  // If this decleration is a function which goes into a vtable, then it's
+  // If this declaration is a function which goes into a vtable, then it's
   // symbol must be as visible as its class. Derived classes even have to put
   // all less visible methods of the base class into their vtables.
 
@@ -306,15 +317,14 @@ static bool verifySILSelfParameterType(SILDeclRef DeclRef,
   // Otherwise, if this function type has a guaranteed self parameter type,
   // make sure that we have a +0 self param.
   return !FTy->getExtInfo().hasGuaranteedSelfParam() ||
-          PInfo.isGuaranteed() || PInfo.isIndirectInOut();
+          PInfo.isGuaranteed() || PInfo.isIndirectMutating();
 }
 
 SILFunction *SILModule::getOrCreateFunction(SILLocation loc,
                                             SILDeclRef constant,
                                             ForDefinition_t forDefinition) {
 
-  SmallVector<char, 128> buffer;
-  auto name = constant.mangle(buffer);
+  auto name = constant.mangle();
   auto constantType = Types.getConstantType(constant).castTo<SILFunctionType>();
   SILLinkage linkage = constant.getLinkage(forDefinition);
 
@@ -363,15 +373,15 @@ SILFunction *SILModule::getOrCreateFunction(SILLocation loc,
     if (constant.isForeign && constant.isClangGenerated())
       F->setForeignBody(HasForeignBody);
 
-    if (auto SemanticsA =
-        constant.getDecl()->getAttrs().getAttribute<SemanticsAttr>())
-      F->setSemanticsAttr(SemanticsA->Value);
+    auto Attrs = constant.getDecl()->getAttrs();
+    for (auto A : Attrs.getAttributes<SemanticsAttr, false /*AllowInvalid*/>())
+      F->addSemanticsAttr(cast<SemanticsAttr>(A)->Value);
   }
 
   F->setDeclContext(constant.hasDecl() ? constant.getDecl() : nullptr);
 
   // If this function has a self parameter, make sure that it has a +0 calling
-  // convention. This can not be done for general function types, since
+  // convention. This cannot be done for general function types, since
   // function_ref's SILFunctionTypes do not have archetypes associated with
   // it.
   CanSILFunctionType FTy = F->getLoweredFunctionType();
@@ -396,6 +406,19 @@ SILFunction *SILModule::getOrCreateSharedFunction(SILLocation loc,
   return getOrCreateFunction(loc, name, SILLinkage::Shared,
                              type, isBareSILFunction, isTransparent, isFragile,
                              isThunk, SILFunction::NotRelevant);
+}
+
+SILFunction *SILModule::getOrCreateFunction(
+    SILLinkage linkage, StringRef name, CanSILFunctionType loweredType,
+    GenericParamList *contextGenericParams, Optional<SILLocation> loc,
+    IsBare_t isBareSILFunction, IsTransparent_t isTrans, IsFragile_t isFragile,
+    IsThunk_t isThunk, SILFunction::ClassVisibility_t classVisibility,
+    Inline_t inlineStrategy, EffectsKind EK, SILFunction *InsertBefore,
+    const SILDebugScope *DebugScope, DeclContext *DC) {
+  return SILFunction::create(*this, linkage, name, loweredType,
+                             contextGenericParams, loc, isBareSILFunction,
+                             isTrans, isFragile, isThunk, classVisibility,
+                             inlineStrategy, EK, InsertBefore, DebugScope, DC);
 }
 
 ArrayRef<SILType> ValueBase::getTypes() const {
@@ -493,27 +516,20 @@ const BuiltinInfo &SILModule::getBuiltinInfo(Identifier ID) {
 }
 
 SILFunction *SILModule::lookUpFunction(SILDeclRef fnRef) {
-  llvm::SmallString<32> name;
-  fnRef.mangle(name);
+  auto name = fnRef.mangle();
   return lookUpFunction(name);
 }
 
-bool SILModule::linkFunction(SILFunction *Fun, SILModule::LinkingMode Mode,
-                             std::function<void(SILFunction *)> Callback) {
-  return SILLinkerVisitor(*this, getSILLoader(), Mode,
-                          ExternalSource, Callback).processFunction(Fun);
+bool SILModule::linkFunction(SILFunction *Fun, SILModule::LinkingMode Mode) {
+  return SILLinkerVisitor(*this, getSILLoader(), Mode).processFunction(Fun);
 }
 
-bool SILModule::linkFunction(SILDeclRef Decl, SILModule::LinkingMode Mode,
-                             std::function<void(SILFunction *)> Callback) {
-  return SILLinkerVisitor(*this, getSILLoader(), Mode,
-                          ExternalSource, Callback).processDeclRef(Decl);
+bool SILModule::linkFunction(SILDeclRef Decl, SILModule::LinkingMode Mode) {
+  return SILLinkerVisitor(*this, getSILLoader(), Mode).processDeclRef(Decl);
 }
 
-bool SILModule::linkFunction(StringRef Name, SILModule::LinkingMode Mode,
-                             std::function<void(SILFunction *)> Callback) {
-  return SILLinkerVisitor(*this, getSILLoader(), Mode,
-                          ExternalSource, Callback).processFunction(Name);
+bool SILModule::linkFunction(StringRef Name, SILModule::LinkingMode Mode) {
+  return SILLinkerVisitor(*this, getSILLoader(), Mode).processFunction(Name);
 }
 
 void SILModule::linkAllWitnessTables() {
@@ -562,8 +578,7 @@ void SILModule::eraseGlobalVariable(SILGlobalVariable *G) {
   getSILGlobalList().erase(G);
 }
 
-SILVTable *SILModule::lookUpVTable(const ClassDecl *C,
-                                   std::function<void(SILFunction *)> Callback) {
+SILVTable *SILModule::lookUpVTable(const ClassDecl *C) {
   if (!C)
     return nullptr;
 
@@ -573,10 +588,9 @@ SILVTable *SILModule::lookUpVTable(const ClassDecl *C,
     return R->second;
 
   // If that fails, try to deserialize it. If that fails, return nullptr.
-  SILVTable *Vtbl = SILLinkerVisitor(*this, getSILLoader(),
-                                     SILModule::LinkingMode::LinkAll,
-                                     ExternalSource,
-                                     Callback).processClassDecl(C);
+  SILVTable *Vtbl =
+      SILLinkerVisitor(*this, getSILLoader(), SILModule::LinkingMode::LinkAll)
+          .processClassDecl(C);
   if (!Vtbl)
     return nullptr;
 
@@ -663,4 +677,25 @@ lookUpFunctionInVTable(ClassDecl *Class, SILDeclRef Member) {
   }
 
   return nullptr;
+}
+
+
+void SILModule::
+registerDeleteNotificationHandler(DeleteNotificationHandler* Handler) {
+  // Ask the handler (that can be an analysis, a pass, or some other data
+  // structure) if it wants to receive delete notifications.
+  if (Handler->needsNotifications()) {
+    NotificationHandlers.insert(Handler);
+  }
+}
+
+void SILModule::
+removeDeleteNotificationHandler(DeleteNotificationHandler* Handler) {
+  NotificationHandlers.remove(Handler);
+}
+
+void SILModule::notifyDeleteHandlers(ValueBase *V) {
+  for (auto *Handler : NotificationHandlers) {
+    Handler->handleDeleteNotification(V);
+  }
 }

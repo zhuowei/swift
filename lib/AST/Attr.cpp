@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -383,6 +383,10 @@ void DeclAttribute::print(ASTPrinter &Printer,
     break;
   }
 
+  case DAK_MigrationId:
+    // Not printed.
+    return;
+
   case DAK_Count:
     llvm_unreachable("exceed declaration attribute kinds");
   }
@@ -477,6 +481,8 @@ StringRef DeclAttribute::getAttrName() const {
     return "<<synthesized protocol>>";
   case DAK_WarnUnusedResult:
     return "warn_unused_result";
+  case DAK_MigrationId:
+    return "_migration_id";
   }
   llvm_unreachable("bad DeclAttrKind");
 }

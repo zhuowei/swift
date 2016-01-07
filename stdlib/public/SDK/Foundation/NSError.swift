@@ -26,14 +26,6 @@ public enum _GenericObjCError : ErrorType {
   case NilError
 }
 
-/// An intrinsic used by the runtime to create an error when an
-/// Objective-C API indicates failure but produces a nil error.
-@warn_unused_result
-@_silgen_name("swift_allocNilObjCError")
-public func _allocNilObjCError() -> ErrorType {
-  return _GenericObjCError.NilError
-}
-
 /// An internal protocol to represent Swift error enums that map to standard
 /// Cocoa NSError domains.
 public protocol _ObjectiveCBridgeableErrorType : ErrorType {
@@ -61,7 +53,7 @@ public func _stdlib_bridgeNSErrorToErrorType<
   }
 }
 
-/// Helper protocol for _BridgedNSError, which used used to provide
+/// Helper protocol for _BridgedNSError, which used to provide
 /// default implementations.
 public protocol __BridgedNSError : RawRepresentable, ErrorType {
   static var _NSErrorDomain: String { get }
@@ -363,44 +355,44 @@ public extension NSCocoaError {
 
   @available(OSX, introduced=10.11) @available(iOS, introduced=9.0)
   public var isCoderError: Bool {
-    return rawValue >= 4864 && rawValue <= 4991;
+    return rawValue >= 4864 && rawValue <= 4991
   }
 
   @available(OSX, introduced=10.5) @available(iOS, introduced=2.0)
   public var isExecutableError: Bool {
-    return rawValue >= 3584 && rawValue <= 3839;
+    return rawValue >= 3584 && rawValue <= 3839
   }
 
   public var isFileError: Bool {
-    return rawValue >= 0 && rawValue <= 1023;
+    return rawValue >= 0 && rawValue <= 1023
   }
 
   public var isFormattingError: Bool {
-    return rawValue >= 2048 && rawValue <= 2559;
+    return rawValue >= 2048 && rawValue <= 2559
   }
 
   @available(OSX, introduced=10.6) @available(iOS, introduced=4.0)
   public var isPropertyListError: Bool {
-    return rawValue >= 3840 && rawValue <= 4095;
+    return rawValue >= 3840 && rawValue <= 4095
   }
 
   @available(OSX, introduced=10.9) @available(iOS, introduced=7.0)
   public var isUbiquitousFileError: Bool {
-    return rawValue >= 4352 && rawValue <= 4607;
+    return rawValue >= 4352 && rawValue <= 4607
   }
 
   @available(OSX, introduced=10.10) @available(iOS, introduced=8.0)
   public var isUserActivityError: Bool {
-    return rawValue >= 4608 && rawValue <= 4863;
+    return rawValue >= 4608 && rawValue <= 4863
   }
 
   public var isValidationError: Bool {
-    return rawValue >= 1024 && rawValue <= 2047;
+    return rawValue >= 1024 && rawValue <= 2047
   }
 
   @available(OSX, introduced=10.8) @available(iOS, introduced=6.0)
   public var isXPCConnectionError: Bool {
-    return rawValue >= 4096 && rawValue <= 4224;
+    return rawValue >= 4096 && rawValue <= 4224
   }
 }
 

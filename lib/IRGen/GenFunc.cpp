@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -176,11 +176,12 @@ static void addIndirectValueParameterAttributes(IRGenModule &IGM,
 static void addInoutParameterAttributes(IRGenModule &IGM,
                                         llvm::AttributeSet &attrs,
                                         const TypeInfo &ti,
-                                        unsigned argIndex) {
+                                        unsigned argIndex,
+                                        bool aliasable) {
   llvm::AttrBuilder b;
   // Aliasing inouts is unspecified, but we still want aliasing to be memory-
   // safe, so we can't mark inouts as noalias at the LLVM level.
-  // They can't be captured without doing unsafe stuff, though.
+  // They still can't be captured without doing unsafe stuff, though.
   b.addAttribute(llvm::Attribute::NoCapture);
   // The inout must reference dereferenceable memory of the type.
   addDereferenceableAttributeToBuilder(IGM, b, ti);
@@ -431,7 +432,7 @@ namespace {
     createWeakStorageType(TypeConverter &TC) const override {
       llvm_unreachable("[weak] function type");
     }
-    const UnownedTypeInfo *
+    const TypeInfo *
     createUnownedStorageType(TypeConverter &TC) const override {
       llvm_unreachable("[unowned] function type");
     }
@@ -471,7 +472,9 @@ namespace {
       e.add(IGF.Builder.CreateLoad(fnAddr, fnAddr->getName()+".load"));
 
       Address dataAddr = projectData(IGF, address);
-      IGF.emitLoadAndRetain(dataAddr, e);
+      auto data = IGF.Builder.CreateLoad(dataAddr);
+      IGF.emitNativeStrongRetain(data);
+      e.add(data);
     }
 
     void loadAsTake(IRGenFunction &IGF, Address addr,
@@ -491,7 +494,7 @@ namespace {
       IGF.Builder.CreateStore(e.claimNext(), fnAddr);
 
       Address dataAddr = projectData(IGF, address);
-      IGF.emitAssignRetained(e.claimNext(), dataAddr);
+      IGF.emitNativeStrongAssign(e.claimNext(), dataAddr);
     }
 
     void initialize(IRGenFunction &IGF, Explosion &e,
@@ -502,19 +505,20 @@ namespace {
 
       // Store the data pointer, if any, transferring the +1.
       Address dataAddr = projectData(IGF, address);
-      IGF.emitInitializeRetained(e.claimNext(), dataAddr);
+      IGF.emitNativeStrongInit(e.claimNext(), dataAddr);
     }
 
     void copy(IRGenFunction &IGF, Explosion &src,
               Explosion &dest) const override {
       src.transferInto(dest, 1);
-      
-      IGF.emitRetain(src.claimNext(), dest);
+      auto data = src.claimNext();
+      IGF.emitNativeStrongRetain(data);
+      dest.add(data);
     }
     
     void consume(IRGenFunction &IGF, Explosion &src) const override {
       src.claimNext();
-      IGF.emitRelease(src.claimNext());
+      IGF.emitNativeStrongRelease(src.claimNext());
     }
 
     void fixLifetime(IRGenFunction &IGF, Explosion &src) const override {
@@ -522,33 +526,56 @@ namespace {
       IGF.emitFixLifetime(src.claimNext());
     }
 
-    void retain(IRGenFunction &IGF, Explosion &e) const override {
+    void strongRetain(IRGenFunction &IGF, Explosion &e) const override {
       e.claimNext();
-      IGF.emitRetainCall(e.claimNext());
+      IGF.emitNativeStrongRetain(e.claimNext());
     }
     
-    void release(IRGenFunction &IGF, Explosion &e) const override {
+    void strongRelease(IRGenFunction &IGF, Explosion &e) const override {
       e.claimNext();
-      IGF.emitRelease(e.claimNext());
+      IGF.emitNativeStrongRelease(e.claimNext());
     }
 
-    void retainUnowned(IRGenFunction &IGF, Explosion &e) const override {
-      e.claimNext();
-      IGF.emitRetainUnowned(e.claimNext());
+    void strongRetainUnowned(IRGenFunction &IGF, Explosion &e) const override {
+      llvm_unreachable("unowned references to functions are not supported");
+    }
+
+    void strongRetainUnownedRelease(IRGenFunction &IGF,
+                                    Explosion &e) const override {
+      llvm_unreachable("unowned references to functions are not supported");
     }
     
     void unownedRetain(IRGenFunction &IGF, Explosion &e) const override {
-      e.claimNext();
-      IGF.emitUnownedRetain(e.claimNext());
+      llvm_unreachable("unowned references to functions are not supported");
     }
 
     void unownedRelease(IRGenFunction &IGF, Explosion &e) const override {
-      e.claimNext();
-      IGF.emitUnownedRelease(e.claimNext());
+      llvm_unreachable("unowned references to functions are not supported");
+    }
+
+    void unownedLoadStrong(IRGenFunction &IGF, Address src,
+                           Explosion &out) const override {
+      llvm_unreachable("unowned references to functions are not supported");
+    }
+
+    void unownedTakeStrong(IRGenFunction &IGF, Address src,
+                           Explosion &out) const override {
+      llvm_unreachable("unowned references to functions are not supported");
+    }
+
+    void unownedInit(IRGenFunction &IGF, Explosion &in,
+                     Address dest) const override {
+      llvm_unreachable("unowned references to functions are not supported");
+    }
+
+    void unownedAssign(IRGenFunction &IGF, Explosion &in,
+                       Address dest) const override {
+      llvm_unreachable("unowned references to functions are not supported");
     }
 
     void destroy(IRGenFunction &IGF, Address addr, SILType T) const override {
-      IGF.emitRelease(IGF.Builder.CreateLoad(projectData(IGF, addr)));
+      auto data = IGF.Builder.CreateLoad(projectData(IGF, addr));
+      IGF.emitNativeStrongRelease(data);
     }
     
     void packIntoEnumPayload(IRGenFunction &IGF,
@@ -1316,7 +1343,7 @@ llvm::Type *SignatureExpansion::expandExternalSignatureTypes() {
 
 void SignatureExpansion::expand(SILParameterInfo param) {
   auto &ti = IGM.getTypeInfo(param.getSILType());
-  switch (param.getConvention()) {
+  switch (auto conv = param.getConvention()) {
   case ParameterConvention::Indirect_Out:
     assert(ParamIRTypes.empty());
     addIndirectReturnAttributes(IGM, Attrs);
@@ -1331,24 +1358,16 @@ void SignatureExpansion::expand(SILParameterInfo param) {
     return;
 
   case ParameterConvention::Indirect_Inout:
-    addInoutParameterAttributes(IGM, Attrs, ti, ParamIRTypes.size());
+  case ParameterConvention::Indirect_InoutAliasable:
+    addInoutParameterAttributes(IGM, Attrs, ti, ParamIRTypes.size(),
+                          conv == ParameterConvention::Indirect_InoutAliasable);
     addPointerParameter(IGM.getStorageType(param.getSILType()));
     return;
 
   case ParameterConvention::Direct_Owned:
   case ParameterConvention::Direct_Unowned:
   case ParameterConvention::Direct_Guaranteed:
-    // Go ahead and further decompose tuples.
-    if (auto tuple = dyn_cast<TupleType>(param.getType())) {
-      for (auto elt : tuple.getElementTypes()) {
-        // Propagate the same ownedness down to the element.
-        expand(SILParameterInfo(elt, param.getConvention()));
-      }
-      return;
-    }
-    SWIFT_FALLTHROUGH;
   case ParameterConvention::Direct_Deallocating:
-
     switch (FnType->getLanguage()) {
     case SILFunctionLanguage::C: {
       llvm_unreachable("Unexpected C/ObjC method in parameter expansion!");
@@ -1801,7 +1820,7 @@ if (Builtin.ID == BuiltinValueKind::id) { \
   return; \
 }
   // FIXME: We could generate the code to dynamically report the overflow if the
-  // thrid argument is true. Now, we just ignore it.
+  // third argument is true. Now, we just ignore it.
 
 #define BUILTIN_BINARY_PREDICATE(id, name, attrs, overload) \
   if (Builtin.ID == BuiltinValueKind::id) \
@@ -2178,7 +2197,7 @@ if (Builtin.ID == BuiltinValueKind::id) { \
     return out.add(OverflowFlag);
   }
 
-  // We are currently emiting code for '_convertFromBuiltinIntegerLiteral',
+  // We are currently emitting code for '_convertFromBuiltinIntegerLiteral',
   // which will call the builtin and pass it a non-compile-time-const parameter.
   if (Builtin.ID == BuiltinValueKind::IntToFPWithOverflow) {
     auto ToTy =
@@ -2347,10 +2366,18 @@ void CallEmission::emitToUnmappedExplosion(Explosion &out) {
   llvm::Value *result = call.getInstruction();
   if (result->getType()->isVoidTy()) return;
 
+  CanSILFunctionType origFunctionType = getCallee().getOrigFunctionType();
+
+  // If the result was returned autoreleased, implicitly insert the reclaim.
+  if (origFunctionType->getResult().getConvention() ==
+        ResultConvention::Autoreleased) {
+    result = emitObjCRetainAutoreleasedReturnValue(IGF, result);
+  }
+
   // Get the natural IR type in the body of the function that makes
   // the call. This may be different than the IR type returned by the
   // call itself due to ABI type coercion.
-  auto resultType = getCallee().getOrigFunctionType()->getSILResult();
+  auto resultType = origFunctionType->getSILResult();
   auto &resultTI = IGF.IGM.getTypeInfo(resultType);
   auto schema = resultTI.getSchema();
   auto *bodyType = schema.getScalarResultType(IGF.IGM);
@@ -2879,9 +2906,9 @@ static void externalizeArguments(IRGenFunction &IGF, const Callee &callee,
     case clang::CodeGen::ABIArgInfo::Direct: {
       auto toTy = AI.getCoerceToType();
 
-      // inout parameters are bridged as Clang pointer types. For now, this
+      // Mutating parameters are bridged as Clang pointer types. For now, this
       // only ever comes up with Clang-generated accessors.
-      if (params[i - firstParam].isIndirectInOut()) {
+      if (params[i - firstParam].isIndirectMutating()) {
         assert(paramType.isAddress() && "SIL type is not an address?");
 
         auto addr = in.claimNext();
@@ -3116,21 +3143,27 @@ void IRGenFunction::emitEpilogue() {
   AllocaIP->eraseFromParent();
 }
 
-Address irgen::allocateForCoercion(IRGenFunction &IGF,
-                                   llvm::Type *fromTy,
-                                   llvm::Type *toTy,
-                                   const llvm::Twine &basename) {
+std::pair<Address, Size>
+irgen::allocateForCoercion(IRGenFunction &IGF,
+                           llvm::Type *fromTy,
+                           llvm::Type *toTy,
+                           const llvm::Twine &basename) {
   auto &DL = IGF.IGM.DataLayout;
   
-  auto bufferTy = DL.getTypeSizeInBits(fromTy) >= DL.getTypeSizeInBits(toTy)
+  auto fromSize = DL.getTypeSizeInBits(fromTy);
+  auto toSize = DL.getTypeSizeInBits(toTy);
+  auto bufferTy = fromSize >= toSize
     ? fromTy
     : toTy;
 
   auto alignment = std::max(DL.getABITypeAlignment(fromTy),
                             DL.getABITypeAlignment(toTy));
 
-  return IGF.createAlloca(bufferTy, Alignment(alignment),
-                          basename + ".coerced");
+  auto buffer = IGF.createAlloca(bufferTy, Alignment(alignment),
+                                 basename + ".coerced");
+  
+  Size size(std::max(fromSize, toSize));
+  return {buffer, size};
 }
 
 llvm::Value* IRGenFunction::coerceValue(llvm::Value *value, llvm::Type *toTy,
@@ -3156,12 +3189,16 @@ llvm::Value* IRGenFunction::coerceValue(llvm::Value *value, llvm::Type *toTy,
   }
 
   // Otherwise we need to store, bitcast, and load.
-  auto address = allocateForCoercion(*this, fromTy, toTy,
-                                     value->getName() + ".coercion");
+  Address address; Size size;
+  std::tie(address, size) = allocateForCoercion(*this, fromTy, toTy,
+                                                value->getName() + ".coercion");
+  Builder.CreateLifetimeStart(address, size);
   auto orig = Builder.CreateBitCast(address, fromTy->getPointerTo());
   Builder.CreateStore(value, orig);
   auto coerced = Builder.CreateBitCast(address, toTy->getPointerTo());
-  return Builder.CreateLoad(coerced);
+  auto loaded = Builder.CreateLoad(coerced);
+  Builder.CreateLifetimeEnd(address, size);
+  return loaded;
 }
 
 void IRGenFunction::emitScalarReturn(llvm::Type *resultType,
@@ -3372,6 +3409,7 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
   case ParameterConvention::Direct_Deallocating:
     llvm_unreachable("callables do not have destructors");
   case ParameterConvention::Indirect_Inout:
+  case ParameterConvention::Indirect_InoutAliasable:
   case ParameterConvention::Indirect_Out:
   case ParameterConvention::Indirect_In:
   case ParameterConvention::Indirect_In_Guaranteed:
@@ -3420,7 +3458,7 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
     switch (argConvention) {
     case ParameterConvention::Indirect_In:
     case ParameterConvention::Direct_Owned:
-      if (!consumesContext) subIGF.emitRetainCall(rawData);
+      if (!consumesContext) subIGF.emitNativeStrongRetain(rawData);
       break;
 
     case ParameterConvention::Indirect_In_Guaranteed:
@@ -3428,7 +3466,7 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
       dependsOnContextLifetime = true;
       if (outType->getCalleeConvention() ==
             ParameterConvention::Direct_Unowned) {
-        subIGF.emitRetainCall(rawData);
+        subIGF.emitNativeStrongRetain(rawData);
         consumesContext = true;
       }
       break;
@@ -3441,6 +3479,7 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
 
     case ParameterConvention::Direct_Deallocating:
     case ParameterConvention::Indirect_Inout:
+    case ParameterConvention::Indirect_InoutAliasable:
     case ParameterConvention::Indirect_Out:
       llvm_unreachable("should never happen!");
     }
@@ -3506,7 +3545,8 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
         dependsOnContextLifetime = true;
         break;
       case ParameterConvention::Indirect_Inout:
-        // Load the add ress of the inout parameter.
+      case ParameterConvention::Indirect_InoutAliasable:
+        // Load the address of the inout parameter.
         cast<LoadableTypeInfo>(fieldTI).loadAsCopy(subIGF, fieldAddr, param);
         break;
       case ParameterConvention::Direct_Guaranteed:
@@ -3557,7 +3597,7 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
     // so we can tail call. The safety of this assumes that neither this release
     // nor any of the loads can throw.
     if (consumesContext && !dependsOnContextLifetime)
-      subIGF.emitRelease(rawData);
+      subIGF.emitNativeStrongRelease(rawData);
   }
 
   // Derive the callee function pointer.  If we found a function
@@ -3650,7 +3690,7 @@ static llvm::Function *emitPartialApplicationForwarder(IRGenModule &IGM,
   
   // If the parameters depended on the context, consume the context now.
   if (rawData && consumesContext && dependsOnContextLifetime)
-    subIGF.emitRelease(rawData);
+    subIGF.emitNativeStrongRelease(rawData);
   
   // FIXME: Reabstract the result value as substituted.
 
@@ -3729,6 +3769,7 @@ void irgen::emitFunctionPartialApplication(IRGenFunction &IGF,
       
     // Capture inout parameters by pointer.
     case ParameterConvention::Indirect_Inout:
+    case ParameterConvention::Indirect_InoutAliasable:
       argLoweringTy = argType.getSwiftType();
       break;
       
@@ -3836,7 +3877,9 @@ void irgen::emitFunctionPartialApplication(IRGenFunction &IGF,
   // still need to build a thunk, but we don't need to allocate anything.
   if ((hasSingleSwiftRefcountedContext == Yes ||
        hasSingleSwiftRefcountedContext == Thunkable) &&
-      *singleRefcountedConvention != ParameterConvention::Indirect_Inout) {
+      *singleRefcountedConvention != ParameterConvention::Indirect_Inout &&
+      *singleRefcountedConvention !=
+        ParameterConvention::Indirect_InoutAliasable) {
     assert(bindings.empty());
     assert(args.size() == 1);
 
@@ -3907,6 +3950,7 @@ void irgen::emitFunctionPartialApplication(IRGenFunction &IGF,
       case ParameterConvention::Direct_Guaranteed:
       case ParameterConvention::Direct_Deallocating:
       case ParameterConvention::Indirect_Inout:
+      case ParameterConvention::Indirect_InoutAliasable:
         cast<LoadableTypeInfo>(fieldLayout.getType())
           .initialize(IGF, args, fieldAddr);
         break;

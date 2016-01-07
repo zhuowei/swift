@@ -1,18 +1,20 @@
-#===--- SwiftBuildSupport.py - Utilities for Swift build scripts -----------===#
+# utils/SwiftBuildSupport.py - Utilities for Swift build scripts -*- python -*-
 #
 # This source file is part of the Swift.org open source project
 #
-# Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+# Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
-#
-#===------------------------------------------------------------------------===#
 
 from __future__ import print_function
 
-import ConfigParser
+try:
+    import ConfigParser # Python 2
+except ImportError:
+    import configparser as ConfigParser # Python 3
+
 import os
 import pipes
 import subprocess
@@ -63,11 +65,6 @@ SWIFT_BUILD_ROOT = os.environ.get(
 def print_with_argv0(message):
     print(sys.argv[0] + ": " + message)
 
-
-def bad_usage(message):
-    print_with_argv0(message)
-    print("Run '" + pipes.quote(sys.argv[0]) + " --help' for more information.")
-    sys.exit(1)
 
 def quote_shell_command(args):
     return " ".join([ pipes.quote(a) for a in args ])
@@ -129,12 +126,24 @@ _PRESET_PREFIX = "preset: "
 def _get_preset_options_impl(config, substitutions, preset_name):
     section_name = _PRESET_PREFIX + preset_name
     if section_name not in config.sections():
-        return (None, None)
+        return (None, None, None)
 
     build_script_opts = []
     build_script_impl_opts = []
+    missing_opts = []
     dash_dash_seen = False
-    for o, a in config.items(section_name):
+
+    for o in config.options(section_name):
+        try:
+            a = config.get(section_name, o)
+        except ConfigParser.InterpolationMissingOptionError as e:
+            # e.reference contains the correctly formatted option
+            missing_opts.append(e.reference)
+            continue
+
+        if not a:
+            a = ""
+
         if o in substitutions:
             continue
 
@@ -143,10 +152,13 @@ def _get_preset_options_impl(config, substitutions, preset_name):
             # Split on newlines and filter out empty lines.
             mixins = filter(None, [m.strip() for m in a.splitlines()])
             for mixin in mixins:
-                (base_build_script_opts, base_build_script_impl_opts) = \
+                (base_build_script_opts,
+                    base_build_script_impl_opts,
+                    base_missing_opts) = \
                     _get_preset_options_impl(config, substitutions, mixin)
                 build_script_opts += base_build_script_opts
                 build_script_impl_opts += base_build_script_impl_opts
+                missing_opts += base_missing_opts
         elif o == "dash-dash":
             dash_dash_seen = True
         elif a == "":
@@ -159,16 +171,21 @@ def _get_preset_options_impl(config, substitutions, preset_name):
                 build_script_opts.append(opt)
             else:
                 build_script_impl_opts.append(opt)
-    return (build_script_opts, build_script_impl_opts)
+
+    return (build_script_opts, build_script_impl_opts, missing_opts)
 
 
 def get_preset_options(substitutions, preset_file_names, preset_name):
     config = _load_preset_files_impl(preset_file_names, substitutions)
 
-    (build_script_opts, build_script_impl_opts) = \
+    (build_script_opts, build_script_impl_opts, missing_opts) = \
         _get_preset_options_impl(config, substitutions, preset_name)
-    if build_script_opts is None:
+    if not build_script_opts:
         print_with_argv0("preset '" + preset_name + "' not found")
+        sys.exit(1)
+    if missing_opts:
+        print_with_argv0("missing option(s) for preset '" + preset_name +
+                         "': " + ", ".join(missing_opts))
         sys.exit(1)
 
     return build_script_opts + [ "--" ] + build_script_impl_opts
@@ -194,4 +211,3 @@ class WorkingDirectory(object):
 
     def __exit__(self, type, value, traceback):
         os.chdir(self.old_cwd)
-

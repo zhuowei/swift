@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -250,7 +250,8 @@ public:
 
     // The variable may have its lifetime extended by a closure, heap-allocate
     // it using a box.
-    AllocBoxInst *allocBox = SGF.B.createAllocBox(decl, lType, ArgNo);
+    AllocBoxInst *allocBox =
+        SGF.B.createAllocBox(decl, lType, {decl->isLet(), ArgNo});
     auto box = SILValue(allocBox, 0);
     auto addr = SILValue(allocBox, 1);
 
@@ -1063,8 +1064,7 @@ SILGenFunction::emitPatternBindingInitialization(Pattern *P,
 
 /// Enter a cleanup to deallocate the given location.
 CleanupHandle SILGenFunction::enterDeallocStackCleanup(SILValue temp) {
-  assert(temp.getType().isLocalStorage() &&
-         "must deallocate container operand, not address operand!");
+  assert(temp.getType().isAddress() &&  "dealloc must have an address type");
   Cleanups.pushCleanup<DeallocStackCleanup>(temp);
   return Cleanups.getTopCleanup();
 }
@@ -1155,11 +1155,9 @@ void SILGenModule::emitExternalDefinition(Decl *d) {
   }
   case DeclKind::Enum: {
     auto ed = cast<EnumDecl>(d);
-    // Emit the enum cases and derived conformance methods for the type.
+    // Emit derived conformance methods for the type.
     for (auto member : ed->getMembers()) {
-      if (auto elt = dyn_cast<EnumElementDecl>(member))
-        emitEnumConstructor(elt);
-      else if (auto func = dyn_cast<FuncDecl>(member))
+      if (auto func = dyn_cast<FuncDecl>(member))
         emitFunction(func);
       else if (auto ctor = dyn_cast<ConstructorDecl>(member))
         emitConstructor(ctor);
@@ -1719,11 +1717,10 @@ SILGenModule::emitProtocolWitness(ProtocolConformance *conformance,
                                               requirement.uncurryLevel);
 
   // Mangle the name of the witness thunk.
-  llvm::SmallString<128> nameBuffer;
+  std::string nameBuffer;
   {
-    llvm::raw_svector_ostream nameStream(nameBuffer);
-    nameStream << "_TTW";
-    Mangler mangler(nameStream);
+    Mangler mangler;
+    mangler.append("_TTW");
     mangler.mangleProtocolConformance(conformance);
 
     if (auto ctor = dyn_cast<ConstructorDecl>(requirement.getDecl())) {
@@ -1737,6 +1734,8 @@ SILGenModule::emitProtocolWitness(ProtocolConformance *conformance,
       mangler.mangleEntity(requiredDecl, ResilienceExpansion::Minimal,
                            requirement.uncurryLevel);
     }
+
+    nameBuffer = mangler.finalize();
   }
 
   // Collect the context generic parameters for the witness.
@@ -1764,16 +1763,11 @@ SILGenModule::emitProtocolWitness(ProtocolConformance *conformance,
   if (witness.isAlwaysInline())
     InlineStrategy = AlwaysInline;
 
-  auto *f = SILFunction::create(M, linkage, nameBuffer,
-                                witnessSILType.castTo<SILFunctionType>(),
-                                witnessContextParams,
-                                SILLocation(witness.getDecl()),
-                                IsNotBare,
-                                IsTransparent,
-                                makeModuleFragile ? IsFragile : IsNotFragile,
-                                IsThunk,
-                                SILFunction::NotRelevant,
-                                InlineStrategy);
+  auto *f = M.getOrCreateFunction(
+      linkage, nameBuffer, witnessSILType.castTo<SILFunctionType>(),
+      witnessContextParams, SILLocation(witness.getDecl()), IsNotBare,
+      IsTransparent, makeModuleFragile ? IsFragile : IsNotFragile, IsThunk,
+      SILFunction::NotRelevant, InlineStrategy);
 
   f->setDebugScope(new (M)
                    SILDebugScope(RegularLocation(witness.getDecl()), *f));
@@ -1794,16 +1788,15 @@ getOrCreateReabstractionThunk(GenericParamList *thunkContextParams,
                               CanSILFunctionType toType,
                               IsFragile_t Fragile) {
   // Mangle the reabstraction thunk.
-  llvm::SmallString<256> buffer;
+  std::string name ;
   {
-    llvm::raw_svector_ostream stream(buffer);
-    Mangler mangler(stream);
+    Mangler mangler;
 
     // This is actually the SIL helper function.  For now, IR-gen
     // makes the actual thunk.
-    stream << "_TTR";
+    mangler.append("_TTR");
     if (auto generics = thunkType->getGenericSignature()) {
-      stream << 'G';
+      mangler.append('G');
       mangler.setModuleContext(M.getSwiftModule());
       mangler.mangleGenericSignature(generics,
                                      ResilienceExpansion::Minimal);
@@ -1819,12 +1812,11 @@ getOrCreateReabstractionThunk(GenericParamList *thunkContextParams,
                        ResilienceExpansion::Minimal, /*uncurry*/ 0);
     mangler.mangleType(toInterfaceType,
                        ResilienceExpansion::Minimal, /*uncurry*/ 0);
+    name = mangler.finalize();
   }
 
   auto loc = RegularLocation::getAutoGeneratedLocation();
-  return M.getOrCreateSharedFunction(loc,
-                                     buffer.str(),
-                                     thunkType,
-                                     IsBare, IsTransparent,
-                                     Fragile, IsReabstractionThunk);
+  return M.getOrCreateSharedFunction(loc, name, thunkType, IsBare,
+                                     IsTransparent, Fragile,
+                                     IsReabstractionThunk);
 }

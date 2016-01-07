@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -124,6 +124,8 @@ def debug_forbid_typecheck_prefix : Separate<["-"], "debug-forbid-typecheck-pref
   HelpText<"Triggers llvm fatal_error if typechecker tries to typecheck a decl "
            "with the provided prefix name">;
 
+def debug_time_compilation : Flag<["-"], "debug-time-compilation">,
+  HelpText<"Prints the time taken by each compilation phase">;
 def debug_time_function_bodies : Flag<["-"], "debug-time-function-bodies">,
   HelpText<"Dumps the time it takes to type-check each function body">;
 
@@ -141,6 +143,9 @@ def debugger_support : Flag<["-"], "debugger-support">,
 
 def disable_arc_opts : Flag<["-"], "disable-arc-opts">,
   HelpText<"Don't run SIL ARC optimization passes.">;
+
+def enable_guaranteed_closure_contexts : Flag<["-"], "enable-guaranteed-closure-contexts">,
+  HelpText<"Use @guaranteed convention for closure context">;
 
 def remove_runtime_asserts : Flag<["-"], "remove-runtime-asserts">,
 HelpText<"Remove runtime asserts.">;
@@ -187,6 +192,9 @@ def dump_clang_diagnostics : Flag<["-"], "dump-clang-diagnostics">,
 def emit_verbose_sil : Flag<["-"], "emit-verbose-sil">,
   HelpText<"Emit locations during SIL emission">;
 
+def use_native_super_method : Flag<["-"], "use-native-super-method">,
+  HelpText<"Use super_method for super calls in native classes">;
+
 def disable_self_type_mangling : Flag<["-"], "disable-self-type-mangling">,
   HelpText<"Disable including Self type in method type manglings">;
 
@@ -197,10 +205,6 @@ def disable_availability_checking : Flag<["-"],
   "disable-availability-checking">,
   HelpText<"Disable checking for potentially unavailable APIs">;
 
-def enable_objc_implicit_properties :
-  Flag<["-"], "enable-objc-implicit-properties">,
-  HelpText<"Import Objective-C \"implicit properties\" as properties">;
-
 def enable_omit_needless_words :
   Flag<["-"], "enable-omit-needless-words">,
   HelpText<"Omit needless words when importing Objective-C names">;
@@ -208,6 +212,10 @@ def enable_omit_needless_words :
 def enable_infer_default_arguments :
   Flag<["-"], "enable-infer-default-arguments">,
   HelpText<"Infer default arguments for imported parameters">;
+
+def enable_swift_name_lookup_tables :
+  Flag<["-"], "enable-swift-name-lookup-tables">,
+  HelpText<"Enable Swift name lookup tables in the Clang importer">;
 
 def warn_omit_needless_words :
   Flag<["-"], "Womit-needless-words">,

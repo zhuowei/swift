@@ -1,8 +1,8 @@
-//===--- SILCloner.h - Defines the SILCloner class ---------------*- C++ -*-==//
+//===--- SILCloner.h - Defines the SILCloner class --------------*- C++ -*-===//
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -29,7 +29,7 @@ namespace swift {
 /// operations requiring cloning (while possibly modifying, at the same time)
 /// instruction sequences.
 ///
-/// By default, this visitor will not do anything useful when when called on a
+/// By default, this visitor will not do anything useful when called on a
 /// basic block, or function; subclasses that want to handle those should
 /// implement the appropriate visit functions and/or provide other entry points.
 template<typename ImplClass>
@@ -348,7 +348,7 @@ void
 SILCloner<ImplClass>::postProcess(SILInstruction *Orig,
                                   SILInstruction *Cloned) {
   assert((Orig->getDebugScope() ? Cloned->getDebugScope()!=nullptr : true) &&
-         "cloned function droped debug scope");
+         "cloned function dropped debug scope");
   InstructionMap.insert(std::make_pair(Orig, Cloned));
 }
 
@@ -366,7 +366,7 @@ SILCloner<ImplClass>::visitSILBasicBlock(SILBasicBlock* BB) {
   // Iterate over successors to do the depth-first search.
   for (auto &Succ : BB->getSuccessors()) {
     auto BBI = BBMap.find(Succ);
-    // Only visit a successor that has not already been visisted.
+    // Only visit a successor that has not already been visited.
     if (BBI == BBMap.end()) {
       // Map the successor to a new BB.
       auto MappedBB = new (F.getModule()) SILBasicBlock(&F);
@@ -400,7 +400,7 @@ SILCloner<ImplClass>::cleanUp(SILFunction *F) {
   // NOTE: It is unfortunate that it essentially duplicates
   // the code from sil-combine, but doing so allows for
   // avoiding any cross-layer invocations between SIL and
-  // SILPasses layers.
+  // SILOptimizer layers.
 
   for (auto *BB : BlocksWithUnreachables) {
     for (auto &I : *BB) {
@@ -670,7 +670,7 @@ SILCloner<ImplClass>::visitDebugValueInst(DebugValueInst *Inst) {
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
   doPostProcess(Inst, getBuilder().createDebugValue(
                           Inst->getLoc(), getOpValue(Inst->getOperand()),
-                          Inst->getVarInfo().getArgNo()));
+                          Inst->getVarInfo()));
 }
 template<typename ImplClass>
 void
@@ -684,11 +684,31 @@ SILCloner<ImplClass>::visitDebugValueAddrInst(DebugValueAddrInst *Inst) {
   // Do not remap the location for a debug Instruction.
   SILValue OpValue = getOpValue(Inst->getOperand());
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
-  doPostProcess(
-      Inst, getBuilder().createDebugValueAddr(Inst->getLoc(), OpValue,
-                                              Inst->getVarInfo().getArgNo()));
+  doPostProcess(Inst, getBuilder().createDebugValueAddr(
+                          Inst->getLoc(), OpValue, Inst->getVarInfo()));
 }
 
+
+template<typename ImplClass>
+void
+SILCloner<ImplClass>::visitLoadUnownedInst(LoadUnownedInst *Inst) {
+  getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
+  doPostProcess(Inst,
+    getBuilder().createLoadUnowned(getOpLocation(Inst->getLoc()),
+                                   getOpValue(Inst->getOperand()),
+                                   Inst->isTake()));
+}
+
+template<typename ImplClass>
+void
+SILCloner<ImplClass>::visitStoreUnownedInst(StoreUnownedInst *Inst) {
+  getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
+  doPostProcess(Inst,
+    getBuilder().createStoreUnowned(getOpLocation(Inst->getLoc()),
+                                    getOpValue(Inst->getSrc()),
+                                    getOpValue(Inst->getDest()),
+                                    Inst->isInitializationOfDest()));
+}
 
 template<typename ImplClass>
 void
@@ -1413,17 +1433,6 @@ SILCloner<ImplClass>::visitStrongRetainInst(StrongRetainInst *Inst) {
 
 template<typename ImplClass>
 void
-SILCloner<ImplClass>::
-visitStrongRetainAutoreleasedInst(StrongRetainAutoreleasedInst *Inst) {
-  SILValue OpValue = getOpValue(Inst->getOperand());
-  getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
-  doPostProcess(Inst,
-    getBuilder().createStrongRetainAutoreleased(getOpLocation(Inst->getLoc()),
-                                                OpValue));
-}
-
-template<typename ImplClass>
-void
 SILCloner<ImplClass>::visitFixLifetimeInst(FixLifetimeInst *Inst) {
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
   doPostProcess(Inst,
@@ -1644,15 +1653,6 @@ SILCloner<ImplClass>::visitReturnInst(ReturnInst *Inst) {
   doPostProcess(Inst,
     getBuilder().createReturn(getOpLocation(Inst->getLoc()),
                               getOpValue(Inst->getOperand())));
-}
-
-template<typename ImplClass>
-void
-SILCloner<ImplClass>::visitAutoreleaseReturnInst(AutoreleaseReturnInst *Inst) {
-  getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
-  doPostProcess(Inst,
-    getBuilder().createAutoreleaseReturn(getOpLocation(Inst->getLoc()),
-                                         getOpValue(Inst->getOperand())));
 }
 
 template<typename ImplClass>

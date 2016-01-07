@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -156,6 +156,17 @@ inline bool hasOneNonDebugUse(const V &value) {
   auto I = Range.begin(), E = Range.end();
   if (I == E) return false;
   return ++I == E;
+}
+
+// Returns the use if the value has only one non debug user.
+template <typename V>
+inline SILInstruction *getSingleNonDebugUser(const V &value) {
+  auto Range = getNonDebugUses(value);
+  auto I = Range.begin(), E = Range.end();
+  if (I == E) return nullptr;
+  if (std::next(I) != E)
+    return nullptr;
+  return I->getUser();
 }
 
 /// Erases the instruction \p I from it's parent block and deletes it, including

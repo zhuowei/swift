@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -472,7 +472,7 @@ void swift::ide::printSwiftSourceInterface(SourceFile &File,
                                            ASTPrinter &Printer,
                                            const PrintOptions &Options) {
 
-  // We print all comments before the fist line of Swift code.
+  // We print all comments before the first line of Swift code.
   printUntilFirstDeclStarts(File, Printer);
   File.print(Printer, Options);
 }
@@ -493,8 +493,12 @@ void swift::ide::printHeaderInterface(
   };
 
   SmallVector<Decl *, 32> ClangDecls;
+  llvm::SmallPtrSet<Decl *, 32> SeenDecls;
   auto headerReceiver = [&](Decl *D) {
-    ClangDecls.push_back(D);
+    if (SeenDecls.count(D) == 0) {
+      SeenDecls.insert(D);
+      ClangDecls.push_back(D);
+    }
   };
 
   Importer.lookupDeclsFromHeader(Filename, headerFilter, headerReceiver);

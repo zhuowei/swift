@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -20,6 +20,7 @@
 
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SmallString.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
@@ -167,7 +168,6 @@ namespace {
                          << " for layout " << Layout::Code << "\n");
     }
 
-    // TODO: this is not required anymore. Remove it.
     bool ShouldSerializeAll;
 
     /// Helper function to update ListOfValues for MethodInst. Format:
@@ -236,9 +236,10 @@ void SILSerializer::writeSILFunction(const SILFunction &F, bool DeclOnly) {
                      << " FnID " << FnID << "\n");
   DEBUG(llvm::dbgs() << "Serialized SIL:\n"; F.dump());
 
-  IdentifierID SemanticsID =
-    F.getSemanticsAttr().empty() ? (IdentifierID)0 :
-    S.addIdentifierRef(Ctx.getIdentifier(F.getSemanticsAttr()));
+  llvm::SmallVector<IdentifierID, 1> SemanticsIDs;
+  for (auto SemanticAttr : F.getSemanticsAttrs()) {
+    SemanticsIDs.push_back(S.addIdentifierRef(Ctx.getIdentifier(SemanticAttr)));
+  }
 
   SILLinkage Linkage = F.getLinkage();
 
@@ -247,7 +248,7 @@ void SILSerializer::writeSILFunction(const SILFunction &F, bool DeclOnly) {
   // 1. shared_external linkage is just a hack to tell the optimizer that a
   // shared function was deserialized.
   //
-  // 2. We can not just serialize a declaration to a shared_external function
+  // 2. We cannot just serialize a declaration to a shared_external function
   // since shared_external functions still have linkonce_odr linkage at the LLVM
   // level. This means they must be defined not just declared.
   //
@@ -259,7 +260,7 @@ void SILSerializer::writeSILFunction(const SILFunction &F, bool DeclOnly) {
   bool NoBody = DeclOnly || isAvailableExternally(Linkage) ||
                 F.isExternalDeclaration();
 
-  // If we don't emit a function body then make sure to mark the decleration
+  // If we don't emit a function body then make sure to mark the declaration
   // as available externally.
   if (NoBody) {
     Linkage = addExternalToLinkage(Linkage);
@@ -269,8 +270,8 @@ void SILSerializer::writeSILFunction(const SILFunction &F, bool DeclOnly) {
       Out, ScratchRecord, abbrCode, toStableSILLinkage(Linkage),
       (unsigned)F.isTransparent(), (unsigned)F.isFragile(),
       (unsigned)F.isThunk(), (unsigned)F.isGlobalInit(),
-      (unsigned)F.getInlineStrategy(), (unsigned)F.getEffectsKind(),
-      FnID, SemanticsID);
+      (unsigned)F.getInlineStrategy(), (unsigned)F.getEffectsKind(), FnID,
+      SemanticsIDs);
 
   if (NoBody)
     return;
@@ -890,6 +891,7 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
   case ValueKind::DestroyAddrInst:
   case ValueKind::IsNonnullInst:
   case ValueKind::LoadInst:
+  case ValueKind::LoadUnownedInst:
   case ValueKind::LoadWeakInst:
   case ValueKind::MarkUninitializedInst:
   case ValueKind::FixLifetimeInst:
@@ -897,9 +899,7 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
   case ValueKind::StrongPinInst:
   case ValueKind::StrongReleaseInst:
   case ValueKind::StrongRetainInst:
-  case ValueKind::StrongRetainAutoreleasedInst:
   case ValueKind::StrongUnpinInst:
-  case ValueKind::AutoreleaseReturnInst:
   case ValueKind::StrongRetainUnownedInst:
   case ValueKind::UnownedRetainInst:
   case ValueKind::UnownedReleaseInst:
@@ -912,6 +912,8 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
     unsigned Attr = 0;
     if (auto *LWI = dyn_cast<LoadWeakInst>(&SI))
       Attr = LWI->isTake();
+    else if (auto *LUI = dyn_cast<LoadUnownedInst>(&SI))
+      Attr = LUI->isTake();
     else if (auto *MUI = dyn_cast<MarkUninitializedInst>(&SI))
       Attr = (unsigned)MUI->getKind();
     else if (auto *DRI = dyn_cast<DeallocRefInst>(&SI))
@@ -1140,6 +1142,7 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
   case ValueKind::AssignInst:
   case ValueKind::CopyAddrInst:
   case ValueKind::StoreInst:
+  case ValueKind::StoreUnownedInst:
   case ValueKind::StoreWeakInst: {
     SILValue operand, value;
     unsigned Attr = 0;
@@ -1147,6 +1150,10 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
       Attr = cast<StoreWeakInst>(&SI)->isInitializationOfDest();
       operand = cast<StoreWeakInst>(&SI)->getDest();
       value = cast<StoreWeakInst>(&SI)->getSrc();
+    } else if (SI.getKind() == ValueKind::StoreUnownedInst) {
+      Attr = cast<StoreUnownedInst>(&SI)->isInitializationOfDest();
+      operand = cast<StoreUnownedInst>(&SI)->getDest();
+      value = cast<StoreUnownedInst>(&SI)->getSrc();
     } else if (SI.getKind() == ValueKind::StoreInst) {
       operand = cast<StoreInst>(&SI)->getDest();
       value = cast<StoreInst>(&SI)->getSrc();

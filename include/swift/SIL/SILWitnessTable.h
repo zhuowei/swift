@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -181,7 +181,7 @@ private:
   NormalProtocolConformance *Conformance;
 
   /// The various witnesses containing in this witness table. Is empty if the
-  /// table has no witness entires or if it is a declaration.
+  /// table has no witness entries or if it is a declaration.
   MutableArrayRef<Entry> Entries;
 
   /// Whether or not this witness table is a declaration. This is separate from

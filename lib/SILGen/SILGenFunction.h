@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -20,6 +20,7 @@
 #include "swift/SIL/SILBuilder.h"
 
 namespace swift {
+  class ParameterList;
 namespace Lowering {
 
 class ArgumentSource;
@@ -31,21 +32,13 @@ class LValue;
 class ManagedValue;
 class RValue;
 class TemporaryInitialization;
-
-/// How a method is dispatched.
-enum class MethodDispatch {
-  // The method implementation can be referenced statically.
-  Static,
-  // The method implementation uses class_method dispatch.
-  Class,
-};
   
 /// Internal context information for the SILGenFunction visitor.
 ///
 /// In general, emission methods which take an SGFContext indicate
 /// that they've initialized the emit-into buffer (if they have) by
 /// returning a "isInContext()" ManagedValue of whatever type.  Callers who
-/// propagate down an SGFContext that might have a emit-into buffer must be
+/// propagate down an SGFContext that might have an emit-into buffer must be
 /// aware of this.
 ///
 /// Clients of emission routines that take an SGFContext can also specify that
@@ -209,7 +202,7 @@ public:
   
   MetatypeInst *createMetatype(SILLocation Loc, SILType Metatype);
 
-  // Generic pply instructions use the conformances necessary to form the call.
+  // Generic apply instructions use the conformances necessary to form the call.
 
   using SILBuilder::createApply;
 
@@ -263,6 +256,16 @@ public:
                                  CanType ConcreteType,
                                  SILType ConcreteLoweredType,
                                  ArrayRef<ProtocolConformance *> Conformances);
+};
+
+/// Parameter to \c SILGenFunction::emitCaptures that indicates what the
+/// capture parameters are being emitted for.
+enum class CaptureEmission {
+  /// Captures are being emitted for immediate application to a local function.
+  ImmediateApplication,
+  /// Captures are being emitted for partial application to form a closure
+  /// value.
+  PartialApplication,
 };
 
 /// SILGenFunction - an ASTVisitor for producing SIL from function bodies.
@@ -677,15 +680,15 @@ public:
   
   /// emitProlog - Generates prolog code to allocate and clean up mutable
   /// storage for closure captures and local arguments.
-  void emitProlog(AnyFunctionRef TheClosure, ArrayRef<Pattern*> paramPatterns,
-                  Type resultType);
+  void emitProlog(AnyFunctionRef TheClosure,
+                  ArrayRef<ParameterList*> paramPatterns, Type resultType);
   /// returns the number of variables in paramPatterns.
-  unsigned emitProlog(ArrayRef<Pattern*> paramPatterns,
+  unsigned emitProlog(ArrayRef<ParameterList*> paramPatterns,
                       Type resultType, DeclContext *DeclCtx);
 
   /// Create SILArguments in the entry block that bind all the values
   /// of the given pattern suitably for being forwarded.
-  void bindParametersForForwarding(Pattern *paramPattern,
+  void bindParametersForForwarding(const ParameterList *params,
                                    SmallVectorImpl<SILValue> &parameters);
 
   /// \brief Create (but do not emit) the epilog branch, and save the
@@ -695,7 +698,7 @@ public:
   ///                    argument of this type to receive the return value for
   ///                    the function.
   /// \param isThrowing  If true, create an error epilog block.
-  /// \param L           The SILLocation which should be accosocated with
+  /// \param L           The SILLocation which should be associated with
   ///                    cleanup instructions.
   void prepareEpilog(Type returnType, bool isThrowing, CleanupLocation L);
   void prepareRethrowEpilog(CleanupLocation l);
@@ -710,7 +713,7 @@ public:
   /// \returns None if the epilog block is unreachable. Otherwise, returns
   ///          the epilog block's return value argument, or a null SILValue if
   ///          the epilog doesn't take a return value. Also returns the location
-  ///          of the return instrcution if the epilog block is supposed to host
+  ///          of the return instruction if the epilog block is supposed to host
   ///          the ReturnLocation (This happens in case the predecessor block is
   ///          merged with the epilog block.)
   std::pair<Optional<SILValue>, SILLocation>
@@ -762,6 +765,12 @@ public:
   // Type conversions for expr emission and thunks
   //===--------------------------------------------------------------------===//
 
+  ManagedValue emitInjectEnum(SILLocation loc,
+                              ArgumentSource payload,
+                              SILType enumTy,
+                              EnumElementDecl *element,
+                              SGFContext C);
+
   ManagedValue emitInjectOptional(SILLocation loc,
                                   ManagedValue v,
                                   CanType inputFormalType,
@@ -804,7 +813,8 @@ public:
   /// The result is a Builtin.Int1.
   SILValue emitDoesOptionalHaveValue(SILLocation loc, SILValue addrOrValue);
 
-  /// \brief Emit a call to the library intrinsic _preconditionOptionalHasValue.
+  /// \brief Emit a switch_enum to call the library intrinsic
+  /// _diagnoseUnexpectedNilOptional if the optional has no value.
   void emitPreconditionOptionalHasValue(SILLocation loc, SILValue addr);
 
   /// \brief Emit a call to the library intrinsic _getOptionalValue
@@ -1002,7 +1012,6 @@ public:
   /// Returns a reference to a constant in local context. This will return a
   /// retained closure object reference if the constant refers to a local func
   /// decl.
-  ManagedValue emitFunctionRef(SILLocation loc, SILDeclRef constant);
   ManagedValue emitFunctionRef(SILLocation loc, SILDeclRef constant,
                                SILConstantInfo constantInfo);
   
@@ -1015,7 +1024,7 @@ public:
                                    = AccessSemantics::Ordinary);
   
   /// Produce a singular RValue for a reference to the specified declaration,
-  /// with the given type and in response to the specified epxression.  Try to
+  /// with the given type and in response to the specified expression.  Try to
   /// emit into the specified SGFContext to avoid copies (when provided).
   ManagedValue emitRValueForDecl(SILLocation loc, ConcreteDeclRef decl, Type ty,
                                  AccessSemantics semantics,
@@ -1033,6 +1042,7 @@ public:
 
   void emitCaptures(SILLocation loc,
                     AnyFunctionRef TheClosure,
+                    CaptureEmission purpose,
                     SmallVectorImpl<ManagedValue> &captures);
 
   ManagedValue emitClosureValue(SILLocation loc,
@@ -1534,9 +1544,6 @@ public:
   /// intrinsic.
   Substitution getPointerSubstitution(Type pointerType,
                                       ArchetypeType *archetype);
-  
-  /// Get the method dispatch mechanism for a method.
-  MethodDispatch getMethodDispatch(AbstractFunctionDecl *method);
 };
 
 

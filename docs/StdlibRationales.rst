@@ -64,7 +64,7 @@ generally *should* use a keyword.  For example, ``String(33, radix:
    they're converting.  Secondly, avoiding method or property syntax
    provides a distinct context for code completion.  Rather than
    appearing in completions offered after ``.``, for example, the
-   available conversions could show up whenever the user hit the “tab”
+   available conversions could show up whenever the user hit the "tab"
    key after an expression.
 
 Protocols with restricted conformance rules
@@ -159,7 +159,7 @@ functions don't return lazy collection wrappers that refer to users' closures.
 The consequence is that all users' closures are ``@noescape``, except in an
 explicitly lazy context.
 
-Based on this rule, we conclude that ``enumeraate()``, ``zip()`` and
+Based on this rule, we conclude that ``enumerate(), ``zip()`` and
 ``reverse()`` return lazy wrappers, but ``filter()`` and ``map()`` don't.  For
 the first three functions being lazy is the right default, since usually the
 result is immediately consumed by for-in, so we don't want to allocate memory

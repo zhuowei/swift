@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -342,7 +342,7 @@ struct _RaceTestAggregatedEvaluations : CustomStringConvertible {
   mutating func addEvaluation(evaluation: RaceTestObservationEvaluation) {
     switch evaluation {
     case .Pass:
-      ++passCount
+      passCount += 1
 
     case .PassInteresting(let s):
       if passInterestingCount[s] == nil {
@@ -351,7 +351,7 @@ struct _RaceTestAggregatedEvaluations : CustomStringConvertible {
       passInterestingCount[s] = passInterestingCount[s]! + 1
 
     case .Failure:
-      ++failureCount
+      failureCount += 1
 
     case .FailureInteresting(let s):
       if failureInterestingCount[s] == nil {
@@ -501,8 +501,8 @@ public func runRaceTest<RT : RaceTestWithPerTrialDataType>(
   let racingThreadCount = threads ?? max(2, _stdlib_getHardwareConcurrency())
   let sharedState = _RaceTestSharedState<RT>(racingThreadCount: racingThreadCount)
 
-  let masterThreadBody: (_: ())->() = {
-    (_: ())->() in
+  let masterThreadBody: () -> Void = {
+    () -> Void in
     for _ in 0..<trials {
       autoreleasepool {
         _masterThreadOneTrial(sharedState)
@@ -510,8 +510,8 @@ public func runRaceTest<RT : RaceTestWithPerTrialDataType>(
     }
   }
 
-  let racingThreadBody: (Int)->() = {
-    (tid: Int)->() in
+  let racingThreadBody: (Int) -> Void = {
+    (tid: Int) -> Void in
     for _ in 0..<trials {
       _workerThreadOneTrial(tid, sharedState)
     }

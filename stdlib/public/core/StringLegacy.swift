@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -111,7 +111,7 @@ extension String {
   }
   
   /// Create an instance representing `v` in base 10.
-  public init<T : UnsignedIntegerType>(_ v: T)  {
+  public init<T : UnsignedIntegerType>(_ v: T) {
     self = _uint64ToString(v.toUIntMax())
   }
 
@@ -133,7 +133,7 @@ extension String {
   /// starting with `a` if `uppercase` is `false` or `A` otherwise.
   public init<T : UnsignedIntegerType>(
     _ v: T, radix: Int, uppercase: Bool = false
-  )  {
+  ) {
     _precondition(radix > 1, "Radix must be greater than 1")
     self = _uint64ToString(
       v.toUIntMax(), radix: Int64(radix), uppercase: uppercase)
@@ -158,7 +158,7 @@ extension String {
     let rng = unicodeScalars
     var startIndex = rng.startIndex
     for _ in 0..<start {
-      ++startIndex
+      startIndex._successorInPlace()
     }
     return String(rng[startIndex..<rng.endIndex])
   }

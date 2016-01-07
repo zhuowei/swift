@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -34,6 +34,9 @@ namespace llvm {
 }
 
 namespace swift {
+  enum IsTake_t : bool;
+  class SILType;
+
 namespace irgen {
   class Address;
   class ContainedAddress;
@@ -56,52 +59,6 @@ enum class FixedPacking {
   
   /// It needs to be checked dynamically.
   Dynamic
-};
-
-/// The kind of reference counting implementation a heap object uses.
-enum class ReferenceCounting : unsigned char {
-  /// The object uses native Swift reference counting.
-  Native,
-  
-  /// The object uses ObjC reference counting.
-  ///
-  /// When ObjC interop is enabled, native Swift class objects are also ObjC
-  /// reference counting compatible. Swift non-class heap objects are never
-  /// ObjC reference counting compatible.
-  ///
-  /// Blocks are always ObjC reference counting compatible.
-  ObjC,
-  
-  /// The object uses _Block_copy/_Block_release reference counting.
-  ///
-  /// This is a strict subset of ObjC; all blocks are also ObjC reference
-  /// counting compatible. The block is assumed to have already been moved to
-  /// the heap so that _Block_copy returns the same object back.
-  Block,
-  
-  /// The object has an unknown reference counting implementation.
-  ///
-  /// This uses maximally-compatible reference counting entry points in the
-  /// runtime.
-  ///
-  /// FIXME: Those entry points are currently objc_retain/objc_release, which
-  /// are not compatible with non-class heap objects.
-  Unknown,
-  
-  /// Cases prior to this one are binary-compatible with Unknown reference
-  /// counting.
-  LastUnknownCompatible = Unknown,
-
-  /// The object has an unknown reference counting implementation and
-  /// the reference value may contain extra bits that need to be masked.
-  ///
-  /// This uses maximally-compatible reference counting entry points in the
-  /// runtime, with a masking layer on top. A bit inside the pointer is used
-  /// to signal native Swift refcounting.
-  Bridge,
-  
-  /// The object uses ErrorType's reference counting entry points.
-  Error,
 };
   
 /// Information about the IR representation and generation of the
@@ -126,7 +83,6 @@ protected:
     /// Everything after this is loadable.
     STIK_Loadable,
     STIK_Reference,
-    STIK_Unowned,
   };
 
   TypeInfo(llvm::Type *Type, Alignment A, IsPOD_t pod,
@@ -307,6 +263,12 @@ public:
   virtual void deallocateStack(IRGenFunction &IGF, Address addr,
                                SILType T) const = 0;
 
+  /// Copy or take a value out of one address and into another, destroying
+  /// old value in the destination.  Equivalent to either assignWithCopy
+  /// or assignWithTake depending on the value of isTake.
+  void assign(IRGenFunction &IGF, Address dest, Address src, IsTake_t isTake,
+              SILType T) const;
+
   /// Copy a value out of an object and into another, destroying the
   /// old value in the destination.
   virtual void assignWithCopy(IRGenFunction &IGF, Address dest,
@@ -316,6 +278,13 @@ public:
   /// old value there and leaving the source object in an invalid state.
   virtual void assignWithTake(IRGenFunction &IGF, Address dest,
                               Address src, SILType T) const = 0;
+
+  /// Copy-initialize or take-initialize an uninitialized object
+  /// with the value from a different object.  Equivalent to either
+  /// initializeWithCopy or initializeWithTake depending on the value
+  /// of isTake.
+  void initialize(IRGenFunction &IGF, Address dest, Address src,
+                  IsTake_t isTake, SILType T) const;
 
   /// Perform a "take-initialization" from the given object.  A
   /// take-initialization is like a C++ move-initialization, except that

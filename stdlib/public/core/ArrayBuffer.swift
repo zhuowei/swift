@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -49,7 +49,7 @@ public struct _ArrayBuffer<Element> : _ArrayBufferType {
   var deferredTypeCheckMask : Int { return 1 }
   
   /// Returns an `_ArrayBuffer<U>` containing the same elements,
-  /// deffering checking each element's `U`-ness until it is accessed.
+  /// deferring checking each element's `U`-ness until it is accessed.
   ///
   /// - Requires: `U` is a class or `@objc` existential derived from `Element`.
   @warn_unused_result
@@ -86,10 +86,6 @@ extension _ArrayBuffer {
   public init(_ source: NativeBuffer, shiftedToStartIndex: Int) {
     _sanityCheck(shiftedToStartIndex == 0, "shiftedToStartIndex must be 0")
     _storage = _ArrayBridgeStorage(native: source._storage)
-  }
-
-  var arrayPropertyIsNative : Bool {
-    return _isNative
   }
 
   /// `true`, if the array is native and does not need a deferred type check.
@@ -179,7 +175,7 @@ extension _ArrayBuffer {
         element is Element,
         "Down-casted Array element failed to match the target type")
     }
-    else  {
+    else {
       let ns = _nonNative
       _precondition(
         ns.objectAtIndex(index) is Element,
@@ -229,7 +225,7 @@ extension _ArrayBuffer {
     var result = target
     for _ in subRange {
       result.initialize(result.memory)
-      ++result
+      result += 1
     }
     return result
   }

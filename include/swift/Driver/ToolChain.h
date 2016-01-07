@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -58,30 +58,44 @@ protected:
     const OutputInfo &OI;
   };
 
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  /// Packs together information chosen by toolchains to create jobs.
+  struct InvocationInfo {
+    const char *ExecutableName;
+    llvm::opt::ArgStringList Arguments;
+    std::vector<std::pair<const char *, const char *>> ExtraEnvironment;
+
+    InvocationInfo(const char *name, llvm::opt::ArgStringList args,
+                   decltype(ExtraEnvironment) extraEnv = {})
+      : ExecutableName(name), Arguments(args), ExtraEnvironment(extraEnv) {}
+  };
+
+  virtual InvocationInfo
   constructInvocation(const CompileJobAction &job,
                       const JobContext &context) const;
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
+  constructInvocation(const InterpretJobAction &job,
+                      const JobContext &context) const;
+  virtual InvocationInfo
   constructInvocation(const BackendJobAction &job,
                       const JobContext &context) const;
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
   constructInvocation(const MergeModuleJobAction &job,
                       const JobContext &context) const;
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
   constructInvocation(const ModuleWrapJobAction &job,
                       const JobContext &context) const;
 
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
   constructInvocation(const REPLJobAction &job,
                       const JobContext &context) const;
 
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
   constructInvocation(const GenerateDSYMJobAction &job,
                       const JobContext &context) const;
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
   constructInvocation(const AutolinkExtractJobAction &job,
                       const JobContext &context) const;
-  virtual std::pair<const char *, llvm::opt::ArgStringList>
+  virtual InvocationInfo
   constructInvocation(const LinkJobAction &job,
                       const JobContext &context) const;
 
@@ -117,7 +131,7 @@ public:
                                     const llvm::opt::ArgList &args,
                                     const OutputInfo &OI) const;
 
-  /// Return the default langauge type to use for the given extension.
+  /// Return the default language type to use for the given extension.
   virtual types::ID lookupTypeForExtension(StringRef Ext) const;
 };
 } // end namespace driver

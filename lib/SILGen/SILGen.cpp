@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -19,6 +19,7 @@
 #include "swift/AST/NameLookup.h"
 #include "swift/AST/PrettyStackTrace.h"
 #include "swift/AST/ResilienceExpansion.h"
+#include "swift/Basic/Timer.h"
 #include "swift/ClangImporter/ClangModule.h"
 #include "swift/Serialization/SerializedModuleLoader.h"
 #include "swift/Serialization/SerializedSILLoader.h"
@@ -31,9 +32,9 @@
 using namespace swift;
 using namespace Lowering;
 
-//===--------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 // SILGenModule Class implementation
-//===--------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
 SILGenModule::SILGenModule(SILModule &M, Module *SM, bool makeModuleFragile)
   : M(M), Types(M.Types), SwiftModule(SM), TopLevelSGF(nullptr),
@@ -210,10 +211,10 @@ SILFunction *SILGenModule::emitTopLevelFunction(SILLocation Loc) {
                                    None,
                                    C);
 
-  return SILFunction::create(M, SILLinkage::Public,
-                             SWIFT_ENTRY_POINT_FUNCTION, topLevelType, nullptr,
-                             Loc, IsBare, IsNotTransparent, IsNotFragile,
-                             IsNotThunk, SILFunction::NotRelevant);
+  return M.getOrCreateFunction(SILLinkage::Public, SWIFT_ENTRY_POINT_FUNCTION,
+                               topLevelType, nullptr, Loc, IsBare,
+                               IsNotTransparent, IsNotFragile, IsNotThunk,
+                               SILFunction::NotRelevant);
 }
 
 SILType SILGenModule::getConstantType(SILDeclRef constant) {
@@ -405,10 +406,10 @@ void SILGenModule::postEmitFunction(SILDeclRef constant,
 void SILGenModule::emitAbstractFuncDecl(AbstractFunctionDecl *AFD) {
   // Emit any default argument generators.
   {
-    auto patterns = AFD->getBodyParamPatterns();
+    auto paramLists = AFD->getParameterLists();
     if (AFD->getDeclContext()->isTypeContext())
-      patterns = patterns.slice(1);
-    emitDefaultArgGenerators(AFD, patterns);
+      paramLists = paramLists.slice(1);
+    emitDefaultArgGenerators(AFD, paramLists);
   }
 
   // If this is a function at global scope, it may close over a global variable.
@@ -552,13 +553,14 @@ void SILGenModule::emitConstructor(ConstructorDecl *decl) {
 }
 
 void SILGenModule::emitEnumConstructor(EnumElementDecl *decl) {
+  // Enum element constructors are always emitted by need, so don't need
+  // delayed emission.
   SILDeclRef constant(decl);
-  emitOrDelayFunction(*this, constant, [this,constant,decl](SILFunction *f) {
-    preEmitFunction(constant, decl, f, decl);
-    PrettyStackTraceSILFunction X("silgen enum constructor", f);
-    SILGenFunction(*this, *f).emitEnumConstructor(decl);
-    postEmitFunction(constant, f);
-  });
+  SILFunction *f = getFunction(constant, ForDefinition);
+  preEmitFunction(constant, decl, f, decl);
+  PrettyStackTraceSILFunction X("silgen enum constructor", f);
+  SILGenFunction(*this, *f).emitEnumConstructor(decl);
+  postEmitFunction(constant, f);
 }
 
 SILFunction *SILGenModule::emitClosure(AbstractClosureExpr *ce) {
@@ -723,10 +725,9 @@ SILFunction *SILGenModule::emitLazyGlobalInitializer(StringRef funcName,
   auto initSILType = getLoweredType(initType).castTo<SILFunctionType>();
 
   auto *f =
-    SILFunction::create(M, SILLinkage::Private, funcName,
-                        initSILType, nullptr, SILLocation(binding),
-                        IsNotBare, IsNotTransparent,
-                        makeModuleFragile ? IsFragile : IsNotFragile);
+      M.getOrCreateFunction(SILLinkage::Private, funcName, initSILType, nullptr,
+                            SILLocation(binding), IsNotBare, IsNotTransparent,
+                            makeModuleFragile ? IsFragile : IsNotFragile);
   f->setDebugScope(new (M)
                    SILDebugScope(RegularLocation(binding->getInit(pbdEntry)),
                                  *f));
@@ -768,21 +769,13 @@ void SILGenModule::emitGlobalGetter(VarDecl *global,
 }
 
 void SILGenModule::emitDefaultArgGenerators(SILDeclRef::Loc decl,
-                                            ArrayRef<Pattern*> patterns) {
+                                        ArrayRef<ParameterList*> paramLists) {
   unsigned index = 0;
-  for (auto pattern : patterns) {
-    pattern = pattern->getSemanticsProvidingPattern();
-    auto tuplePattern = dyn_cast<TuplePattern>(pattern);
-    if (!tuplePattern) {
-      ++index;
-      continue;
-    }
-
-    for (auto &elt : tuplePattern->getElements()) {
-      if (auto handle = elt.getInit()) {
-        emitDefaultArgGenerator(SILDeclRef::getDefaultArgGenerator(decl,index),
+  for (auto paramList : paramLists) {
+    for (auto param : *paramList) {
+      if (auto handle = param->getDefaultValue())
+        emitDefaultArgGenerator(SILDeclRef::getDefaultArgGenerator(decl, index),
                                 handle->getExpr());
-      }
       ++index;
     }
   }
@@ -1145,14 +1138,15 @@ void SILGenModule::emitSourceFile(SourceFile *sf, unsigned startElem) {
     visit(D);
 }
 
-//===--------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 // SILModule::constructSIL method implementation
-//===--------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
 std::unique_ptr<SILModule>
 SILModule::constructSIL(Module *mod, SILOptions &options, FileUnit *SF,
                         Optional<unsigned> startElem, bool makeModuleFragile,
                         bool isWholeModule) {
+  SharedTimer timer("SILGen");
   const DeclContext *DC;
   if (startElem) {
     assert(SF && "cannot have a start element without a source file");

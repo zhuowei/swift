@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -38,7 +38,7 @@ public enum Optional<Wrapped> : _Reflectable, NilLiteralConvertible {
     }
   }
 
-  /// Returns `nil` if `self` is nil, `f(self!)` otherwise.
+  /// Returns `nil` if `self` is `nil`, `f(self!)` otherwise.
   @warn_unused_result
   public func flatMap<U>(@noescape f: (Wrapped) throws -> U?) rethrows -> U? {
     switch self {
@@ -86,14 +86,14 @@ extension Optional : CustomDebugStringConvertible {
 //
 /// Haskell's fmap for Optionals.
 @available(*, unavailable, message="call the 'map()' method on the optional value")
-public func map<T, U>(x: T?, @noescape _ f: (T)->U) -> U? {
+public func map<T, U>(x: T?, @noescape _ f: (T) -> U) -> U? {
   fatalError("unavailable function can't be called")
 }
 
 
-/// Returns `f(self)!` iff `self` and `f(self)` are not nil.
+/// Returns `f(self)!` iff `self` and `f(self)` are not `nil`.
 @available(*, unavailable, message="call the 'flatMap()' method on the optional value")
-public func flatMap<T, U>(x: T?, @noescape _ f: (T)->U?) -> U? {
+public func flatMap<T, U>(x: T?, @noescape _ f: (T) -> U?) -> U? {
   fatalError("unavailable function can't be called")
 }
 
@@ -138,7 +138,7 @@ func _injectNothingIntoOptional<Wrapped>() -> Wrapped? {
 // Comparisons
 @warn_unused_result
 public func == <T: Equatable> (lhs: T?, rhs: T?) -> Bool {
-  switch (lhs,rhs) {
+  switch (lhs, rhs) {
   case let (l?, r?):
     return l == r
   case (nil, nil):
@@ -230,8 +230,8 @@ internal struct _OptionalMirror<Wrapped> : _MirrorType {
   var count: Int { return (_value != nil) ? 1 : 0 }
 
   subscript(i: Int) -> (String, _MirrorType) {
-    switch (_value,i) {
-    case (.Some(let contents),0) : return ("Some",_reflect(contents))
+    switch (_value, i) {
+    case (.Some(let contents), 0) : return ("Some", _reflect(contents))
     default: _preconditionFailure("cannot extract this child index")
     }
   }
@@ -251,7 +251,7 @@ internal struct _OptionalMirror<Wrapped> : _MirrorType {
 
 @warn_unused_result
 public func < <T : Comparable> (lhs: T?, rhs: T?) -> Bool {
-  switch (lhs,rhs) {
+  switch (lhs, rhs) {
   case let (l?, r?):
     return l < r
   case (nil, _?):
@@ -263,7 +263,7 @@ public func < <T : Comparable> (lhs: T?, rhs: T?) -> Bool {
 
 @warn_unused_result
 public func > <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
-  switch (lhs,rhs) {
+  switch (lhs, rhs) {
   case let (l?, r?):
     return l > r
   default:
@@ -273,7 +273,7 @@ public func > <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
 
 @warn_unused_result
 public func <= <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
-  switch (lhs,rhs) {
+  switch (lhs, rhs) {
   case let (l?, r?):
     return l <= r
   default:
@@ -283,7 +283,7 @@ public func <= <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
 
 @warn_unused_result
 public func >= <T : Comparable>(lhs: T?, rhs: T?) -> Bool {
-  switch (lhs,rhs) {
+  switch (lhs, rhs) {
   case let (l?, r?):
     return l >= r
   default:

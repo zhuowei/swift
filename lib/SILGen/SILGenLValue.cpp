@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -562,7 +562,7 @@ namespace {
 static bool isReadNoneFunction(const Expr *e) {
   // If this is a curried call to an integer literal conversion operations, then
   // we can "safely" assume it is readnone (btw, yes this is totally gross).
-  // This is better to be attribute driven, ala rdar://15587352.
+  // This is better to be attribute driven, a la rdar://15587352.
   if (auto *dre = dyn_cast<DeclRefExpr>(e)) {
     DeclName name = dre->getDecl()->getFullName();
     return (name.getArgumentNames().size() == 1 &&
@@ -724,7 +724,7 @@ namespace {
                                  AccessKind kind) const override {
       SILDeclRef accessor = getAccessor(gen, kind);
       auto accessorType = gen.SGM.Types.getConstantFunctionType(accessor);
-      if (accessorType->getSelfParameter().isIndirectInOut()) {
+      if (accessorType->getSelfParameter().isIndirectMutating()) {
         return AccessKind::ReadWrite;
       } else {
         return AccessKind::Read;
@@ -1415,7 +1415,7 @@ void LValue::addOrigToSubstComponent(SILType loweredSubstType) {
   assert(getTypeOfRValue() != loweredSubstType &&
          "reabstraction component is unnecessary!");
 
-  // Peephole away complementary reabstractons.
+  // Peephole away complementary reabstractions.
   assert(!Path.empty() && "adding translation component to empty l-value");
   if (Path.back()->getKind() == PathComponent::SubstToOrigKind) {
     // But only if the lowered type matches exactly.
@@ -1437,7 +1437,7 @@ void LValue::addSubstToOrigComponent(AbstractionPattern origType,
   assert(getTypeOfRValue() != loweredSubstType &&
          "reabstraction component is unnecessary!");
 
-  // Peephole away complementary reabstractons.
+  // Peephole away complementary reabstractions.
   assert(!Path.empty() && "adding translation component to empty l-value");
   if (Path.back()->getKind() == PathComponent::OrigToSubstKind) {
     // But only if the lowered type matches exactly.
@@ -1529,8 +1529,7 @@ static ArrayRef<Substitution>
 getNonMemberVarDeclSubstitutions(SILGenFunction &gen, VarDecl *var) {
   ArrayRef<Substitution> substitutions;
   if (auto genericParams
-      = gen.SGM.Types.getEffectiveGenericParamsForContext(
-                                                      var->getDeclContext()))
+      = var->getDeclContext()->getGenericParamsOfContext())
     substitutions =
         genericParams->getForwardingSubstitutions(gen.getASTContext());
   return substitutions;
@@ -2073,6 +2072,9 @@ SILValue SILGenFunction::emitConversionToSemanticRValue(SILLocation loc,
   // For @unowned(safe) types, we need to generate a strong retain and
   // strip the unowned box.
   if (auto unownedType = src.getType().getAs<UnownedStorageType>()) {
+    assert(unownedType->isLoadable(ResilienceExpansion::Maximal));
+    (void) unownedType;
+
     B.createStrongRetainUnowned(loc, src);
     return B.createUnownedToRef(loc, src,
                 SILType::getPrimitiveObjectType(unownedType.getReferentType()));
@@ -2107,6 +2109,10 @@ static SILValue emitLoadOfSemanticRValue(SILGenFunction &gen,
 
   // For @unowned(safe) types, we need to strip the unowned box.
   if (auto unownedType = storageType.getAs<UnownedStorageType>()) {
+    if (!unownedType->isLoadable(ResilienceExpansion::Maximal)) {
+      return gen.B.createLoadUnowned(loc, src, isTake);
+    }
+
     auto unownedValue = gen.B.createLoad(loc, src);
     gen.B.createStrongRetainUnowned(loc, unownedValue);
     if (isTake) gen.B.createUnownedRelease(loc, unownedValue);
@@ -2159,7 +2165,16 @@ static void emitStoreOfSemanticRValue(SILGenFunction &gen,
 
   // For @unowned(safe) types, we need to enter the unowned box by
   // turning the strong retain into an unowned retain.
-  if (storageType.is<UnownedStorageType>()) {
+  if (auto unownedType = storageType.getAs<UnownedStorageType>()) {
+    // FIXME: resilience
+    if (!unownedType->isLoadable(ResilienceExpansion::Maximal)) {
+      gen.B.createStoreUnowned(loc, value, dest, isInit);
+
+      // store_unowned doesn't take ownership of the input, so cancel it out.
+      gen.B.emitStrongReleaseAndFold(loc, value);
+      return;
+    }
+
     auto unownedValue =
       gen.B.createRefToUnowned(loc, value, storageType.getObjectType());
     gen.B.createUnownedRetain(loc, unownedValue);
@@ -2258,7 +2273,10 @@ SILValue SILGenFunction::emitConversionFromSemanticValue(SILLocation loc,
   // @weak types are never loadable, so we don't need to handle them here.
   
   // For @unowned types, place into an unowned box.
-  if (storageType.is<UnownedStorageType>()) {
+  if (auto unownedType = storageType.getAs<UnownedStorageType>()) {
+    assert(unownedType->isLoadable(ResilienceExpansion::Maximal));
+    (void) unownedType;
+
     SILValue unowned = B.createRefToUnowned(loc, semanticValue, storageType);
     B.createUnownedRetain(loc, unowned);
     B.emitStrongReleaseAndFold(loc, semanticValue);
@@ -2855,7 +2873,7 @@ SILFunction *MaterializeForSetEmitter::createCallback(GeneratorFn generator) {
  
   // Mangle this as if it were a conformance thunk for a closure
   // within the witness.
-  llvm::SmallString<128> name;
+  std::string name;
   {
     ClosureExpr closure(/*patterns*/ nullptr,
                         /*throws*/ SourceLoc(),
@@ -2869,11 +2887,11 @@ SILFunction *MaterializeForSetEmitter::createCallback(GeneratorFn generator) {
                                                      nullptr));
     closure.getCaptureInfo().setGenericParamCaptures(true);
 
-    llvm::raw_svector_ostream nameStream(name);
-    nameStream << "_TTW";
-    Mangle::Mangler mangler(nameStream);
+    Mangle::Mangler mangler;
+    mangler.append("_TTW");
     mangler.mangleProtocolConformance(Conformance);
     mangler.mangleClosureEntity(&closure, ResilienceExpansion::Minimal, 1);
+    name = mangler.finalize();
   }
 
   // Create the SILFunctionType for the callback.

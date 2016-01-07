@@ -139,6 +139,7 @@ protocol Bar { func bar() }
 // DL_INSTANCE_DOT-DAG: Decl[InstanceVar]/OtherModule[swift_ide_test]:      base1_Property2[#Base?#]{{; name=.+$}}
 // DL_INSTANCE_DOT-DAG: Decl[InstanceMethod]/OtherModule[baz_clang_module]: baz_Class_InstanceFunc1!()[#Void#]{{; name=.+$}}
 // DL_INSTANCE_DOT-DAG: Decl[InstanceVar]/OtherModule[baz_clang_module]:    baz_Class_Property1[#Baz_Class!?#]{{; name=.+$}}
+// DL_INSTANCE_DOT-DAG: Decl[InstanceVar]/OtherModule[baz_clang_module]:    baz_Class_Property2[#Baz_Class!?#]{{; name=.+$}}
 // DL_INSTANCE_DOT-DAG: Decl[InstanceMethod]/OtherModule[baz_clang_module]: baz_Protocol_InstanceFunc1!()[#Void#]{{; name=.+$}}
 // DL_INSTANCE_DOT-DAG: Decl[InstanceMethod]/OtherModule[foo_swift_module]: foo_Nested1_ObjcInstanceFunc1!()[#Void#]{{; name=.+$}}
 // DL_INSTANCE_DOT-DAG: Decl[InstanceVar]/OtherModule[foo_swift_module]:    foo_Nested1_Property1[#Int?#]{{; name=.+$}}
@@ -455,7 +456,7 @@ func testAnyObject10() {
 func testAnyObject11(dl: AnyObject) {
   dl.returnsObjcClass#^DL_FUNC_NAME_1^#
 }
-// FIXME: it wolud be nice if we produced a call pattern here.
+// FIXME: it would be nice if we produced a call pattern here.
 // DL_FUNC_NAME_1:     Begin completions
 // DL_FUNC_NAME_1-DAG: Decl[InstanceMethod]/CurrNominal:   .map({#(f):
 // DL_FUNC_NAME_1-DAG: Decl[InstanceMethod]/CurrNominal:   .flatMap({#(f):
@@ -470,7 +471,7 @@ func testAnyObject11_(dl: AnyObject) {
 func testAnyObject12(dl: AnyObject) {
   dl.returnsObjcClass.#^DL_FUNC_NAME_DOT_1^#
 }
-// FIXME: it wolud be nice if we produced a call pattern here.
+// FIXME: it would be nice if we produced a call pattern here.
 // DL_FUNC_NAME_DOT_1:     Begin completions
 // DL_FUNC_NAME_DOT_1-DAG: Decl[InstanceMethod]/CurrNominal:   map({#(f):
 // DL_FUNC_NAME_DOT_1-DAG: Decl[InstanceMethod]/CurrNominal:   flatMap({#(f):

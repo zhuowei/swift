@@ -1,8 +1,8 @@
-//===--- IRGenDebugInfo.h - Debug Info Support-------------------*- C++ -*-===//
+//===--- IRGenDebugInfo.h - Debug Info Support ------------------*- C++ -*-===//
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -100,7 +100,7 @@ class IRGenDebugInfo {
 
   Location LastDebugLoc;    /// The last location that was emitted.
   const SILDebugScope *LastScope; /// The scope of that last location.
-  bool IsLibrary;           /// Whether this is a libary or a top level module.
+  bool IsLibrary;           /// Whether this is a library or a top level module.
 #ifndef NDEBUG
   /// The basic block where the location was last changed.
   llvm::BasicBlock *LastBasicBlock;
@@ -192,7 +192,7 @@ public:
   void emitArtificialFunction(SILModule &SILMod, IRBuilder &Builder,
                               llvm::Function *Fn, SILType SILTy = SILType());
 
-  /// Emit a dbg.declare instrinsic at the current insertion point and
+  /// Emit a dbg.declare intrinsic at the current insertion point and
   /// the Builder's current debug location.
   void emitVariableDeclaration(IRBuilder &Builder,
                                ArrayRef<llvm::Value *> Storage,
@@ -200,22 +200,6 @@ public:
                                StringRef Name, unsigned ArgNo = 0,
                                IndirectionKind = DirectValue,
                                ArtificialKind = RealValue);
-
-  /// Convenience function for stack-allocated variables. Calls
-  /// emitVariableDeclaration internally.
-  void emitStackVariableDeclaration(IRBuilder &Builder,
-                                    ArrayRef<llvm::Value *> Storage,
-                                    DebugTypeInfo Ty, const SILDebugScope *DS,
-                                    StringRef Name,
-                                    IndirectionKind Indirection = DirectValue);
-
-  /// Convenience function for variables that are function arguments.
-  void emitArgVariableDeclaration(IRBuilder &Builder,
-                                  ArrayRef<llvm::Value *> Storage,
-                                  DebugTypeInfo Ty, const SILDebugScope *DS,
-                                  StringRef Name, unsigned ArgNo,
-                                  IndirectionKind = DirectValue,
-                                  ArtificialKind = RealValue);
 
   /// Emit a dbg.declare or dbg.value intrinsic, depending on Storage.
   void emitDbgIntrinsic(llvm::BasicBlock *BB, llvm::Value *Storage,
@@ -326,7 +310,7 @@ public:
 /// instructions (e.g., ARC-inserted calls to release()) that have no
 /// source location associated with them. The DWARF specification
 /// allows the compiler to use the special line number 0 to indicate
-/// code that can not be attributed to any source location.
+/// code that cannot be attributed to any source location.
 class ArtificialLocation : public AutoRestoreLocation {
 public:
   /// \brief Set the current location to line 0, but within scope DS.

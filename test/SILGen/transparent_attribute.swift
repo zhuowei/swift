@@ -1,12 +1,12 @@
 // RUN: %target-swift-frontend -emit-silgen -emit-verbose-sil %s | FileCheck %s
 
-// Test if 'transparent' atribute gets propagated correctly to apply instructions.
+// Test if 'transparent' attribute gets propagated correctly to apply instructions.
 
 // Test that the attribute gets set on default argument generators.
 @_transparent func transparentFuncWithDefaultArgument (x: Int = 1) -> Int {
   return x
 }
-func useTransparentFuncWithDefaultArgument() ->Int {
+func useTransparentFuncWithDefaultArgument() -> Int {
   return transparentFuncWithDefaultArgument();
 
   // CHECK-LABEL: sil hidden @_TF21transparent_attribute37useTransparentFuncWithDefaultArgumentFT_Si
@@ -71,8 +71,8 @@ var x2 : MySt {
 func testProperty(z: MySt) {
   x1 = z
   x2 = z
-  var m1 : MySt = x1;
-  var m2 : MySt = x2;
+  var m1 : MySt = x1
+  var m2 : MySt = x2
   // CHECK-APPLY: sil hidden @_TF21transparent_attribute12testPropertyFT1zVS_4MySt_T_
   // CHECK: function_ref @_TF21transparent_attributes2x1VS_4MySt
   // CHECK-NEXT: apply
@@ -142,9 +142,8 @@ func testEnumExtension() {
   MyEnum.onetransp.tr3()
   // CHECK-APPLY: sil hidden @_TF21transparent_attribute17testEnumExtensionFT_T_
   // CHECK: [[TR3:%[0-9]+]] = function_ref @_TFO21transparent_attribute6MyEnum3tr3
-  // CHECK: [[INIT:%[0-9]+]] = function_ref @_TFO21transparent_attribute6MyEnum9onetransp
-  // CHECK: apply [[INIT]]
-  // CHECK: apply [[TR3]]
+  // CHECK: [[INIT:%[0-9]+]] = enum $MyEnum, #MyEnum.onetransp!enumelt
+  // CHECK: apply [[TR3]]([[INIT]])
 }
 
 struct testVarDecl {

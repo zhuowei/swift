@@ -1,5 +1,5 @@
-// RUN: %target-swift-frontend -sdk %S/Inputs -I %S/Inputs -enable-source-import -primary-file %s %S/Inputs/dynamic_other.swift -emit-silgen | FileCheck %s
-// RUN: %target-swift-frontend -sdk %S/Inputs -I %S/Inputs -enable-source-import -primary-file %s %S/Inputs/dynamic_other.swift -emit-sil -verify
+// RUN: %target-swift-frontend -use-native-super-method -sdk %S/Inputs -I %S/Inputs -enable-source-import -primary-file %s %S/Inputs/dynamic_other.swift -emit-silgen | FileCheck %s
+// RUN: %target-swift-frontend -use-native-super-method -sdk %S/Inputs -I %S/Inputs -enable-source-import -primary-file %s %S/Inputs/dynamic_other.swift -emit-sil -verify
 
 // REQUIRES: objc_interop
 
@@ -148,54 +148,54 @@ class Subclass: Foo {
     super.nativeMethod()
   }
   // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclass12nativeMethod
-  // CHECK:         function_ref @_TFC7dynamic3Foo12nativeMethod
+  // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.nativeMethod!1
 
   override var nativeProp: Int {
     get { return super.nativeProp }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclassg10nativePropSi
-    // CHECK:         function_ref @_TFC7dynamic3Foog10nativePropSi
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.nativeProp!getter.1
     set { super.nativeProp = newValue }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclasss10nativePropSi
-    // CHECK:         function_ref @_TFC7dynamic3Foos10nativePropSi
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.nativeProp!setter.1
   }
 
   override subscript(native native: Int) -> Int {
     get { return super[native: native] }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclassg9subscriptFT6nativeSi_Si
-    // CHECK:         function_ref @_TFC7dynamic3Foog9subscriptFT6nativeSi_Si
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.subscript!getter.1
     set { super[native: native] = newValue }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclasss9subscriptFT6nativeSi_Si
-    // CHECK:         function_ref @_TFC7dynamic3Foos9subscriptFT6nativeSi_Si
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.subscript!setter.1
   }
 
   override init(objc: Int) {
     super.init(objc: objc)
   }
   // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclassc
-  // CHECK:         function_ref @_TFC7dynamic3Fooc
+  // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.init!initializer.1
 
   override func objcMethod() {
     super.objcMethod()
   }
   // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclass10objcMethod
-  // CHECK:         function_ref @_TFC7dynamic3Foo10objcMethod
+  // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.objcMethod!1
 
   override var objcProp: Int {
     get { return super.objcProp }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclassg8objcPropSi
-    // CHECK:         function_ref @_TFC7dynamic3Foog8objcPropSi
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.objcProp!getter.1
     set { super.objcProp = newValue }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclasss8objcPropSi
-    // CHECK:         function_ref @_TFC7dynamic3Foos8objcPropSi
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.objcProp!setter.1
   }
 
   override subscript(objc objc: AnyObject) -> Int {
     get { return super[objc: objc] }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclassg9subscriptFT4objcPs9AnyObject__Si
-    // CHECK:         function_ref @_TFC7dynamic3Foog9subscriptFT4objcPs9AnyObject__Si
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.subscript!getter.1
     set { super[objc: objc] = newValue }
     // CHECK-LABEL: sil hidden @_TFC7dynamic8Subclasss9subscriptFT4objcPs9AnyObject__Si
-    // CHECK:         function_ref @_TFC7dynamic3Foos9subscriptFT4objcPs9AnyObject__Si
+    // CHECK:         super_method {{%[0-9]+}} : $Subclass, #Foo.subscript!setter.1
   }
 
   // Dynamic methods are super-dispatched by objc_msgSend
@@ -331,7 +331,7 @@ extension Gizmo {
 
 // CHECK-LABEL: sil hidden @_TF7dynamic24foreignExtensionDispatchFCSo5GizmoT_
 func foreignExtensionDispatch(g: Gizmo) {
-  // CHECK: class_method [volatile] %0 : $Gizmo, #Gizmo.foreignObjCExtension!1.foreign : Gizmo
+  // CHECK: class_method [volatile] %0 : $Gizmo, #Gizmo.foreignObjCExtension!1.foreign : (Gizmo)
   g.foreignObjCExtension()
   // CHECK: class_method [volatile] %0 : $Gizmo, #Gizmo.foreignDynamicExtension!1.foreign
   g.foreignDynamicExtension()
@@ -427,7 +427,7 @@ public class Sub : Base {
   // CHECK: }
 
   // CHECK-LABEL: sil shared [transparent] @_TFFC7dynamic3Subg1xSbu_KzT_Sb : $@convention(thin) (@owned Sub) -> (Bool, @error ErrorType) {
-  // CHECK: [[SUPER:%.*]] = super_method [volatile] %0 : $Sub, #Base.x!getter.1.foreign : Base -> () -> Bool , $@convention(objc_method) (Base) -> ObjCBool
+  // CHECK: [[SUPER:%.*]] = super_method [volatile] %0 : $Sub, #Base.x!getter.1.foreign : (Base) -> () -> Bool , $@convention(objc_method) (Base) -> ObjCBool
   // CHECK: = apply [[SUPER]]({{%.*}})
   // CHECK: return {{%.*}} : $Bool
   // CHECK: }

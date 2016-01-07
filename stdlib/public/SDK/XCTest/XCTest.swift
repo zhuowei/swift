@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -153,7 +153,7 @@ public func XCTAssertNotNil(@autoclosure expression: () -> Any?, _ message: Stri
 
 public func XCTAssert( @autoclosure expression: () -> BooleanType, _ message: String = "", file: String = __FILE__, line: UInt = __LINE__)  -> Void {
   // XCTAssert is just a cover for XCTAssertTrue.
-  XCTAssertTrue(expression, message, file: file, line: line);
+  XCTAssertTrue(expression, message, file: file, line: line)
 }
 
 public func XCTAssertTrue(@autoclosure expression: () -> BooleanType, _ message: String = "", file: String = __FILE__, line: UInt = __LINE__) -> Void {

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -196,6 +196,7 @@ namespace {
     RValue visitInterpolatedStringLiteralExpr(InterpolatedStringLiteralExpr *E,
                                               SGFContext C);
     RValue visitObjectLiteralExpr(ObjectLiteralExpr *E, SGFContext C);
+    RValue visitEditorPlaceholderExpr(EditorPlaceholderExpr *E, SGFContext C);
     RValue visitMagicIdentifierLiteralExpr(MagicIdentifierLiteralExpr *E,
                                            SGFContext C);
     RValue visitCollectionExpr(CollectionExpr *E, SGFContext C);
@@ -292,7 +293,7 @@ emitRValueForDecl(SILLocation loc, ConcreteDeclRef declRef, Type ncRefType,
   // Any writebacks for this access are tightly scoped.
   WritebackScope scope(*this);
   
-  // If this is an decl that we have an lvalue for, produce and return it.
+  // If this is a decl that we have an lvalue for, produce and return it.
   ValueDecl *decl = declRef.getDecl();
   
   if (!ncRefType) ncRefType = decl->getType();
@@ -841,8 +842,8 @@ SILValue SILGenFunction::emitTemporaryAllocation(SILLocation loc,
                                                  SILType ty) {
   ty = ty.getObjectType();
   auto alloc = B.createAllocStack(loc, ty);
-  enterDeallocStackCleanup(alloc->getContainerResult());
-  return alloc->getAddressResult();
+  enterDeallocStackCleanup(alloc);
+  return alloc;
 }
 
 // Return an initialization address we can emit directly into.
@@ -1956,6 +1957,11 @@ visitObjectLiteralExpr(ObjectLiteralExpr *E, SGFContext C) {
   return visit(E->getSemanticExpr(), C);
 }
 
+RValue RValueEmitter::
+visitEditorPlaceholderExpr(EditorPlaceholderExpr *E, SGFContext C) {
+  return visit(E->getSemanticExpr(), C);
+}
+
 static StringRef
 getMagicFunctionString(SILGenFunction &gen) {
   assert(gen.MagicFunctionName
@@ -2337,20 +2343,16 @@ RValue RValueEmitter::visitInjectIntoOptionalExpr(InjectIntoOptionalExpr *E,
     ManagedValue bitcastMV = ManagedValue(bitcast, result.getCleanup());
     return RValue(SGF, E, bitcastMV);
   }
-  
-  // Create a buffer for the result if this is an address-only optional.
-  auto &optTL = SGF.getTypeLowering(E->getType());
-  if (!optTL.isAddressOnly()) {
-    auto result = SGF.emitRValueAsSingleValue(E->getSubExpr());
-    result = SGF.getOptionalSomeValue(E, result, optTL);
-    return RValue(SGF, E, result);
-  }
-  
-  SILValue optAddr = SGF.getBufferForExprResult(E, optTL.getLoweredType(), C);
-  
-  SGF.emitInjectOptionalValueInto(E, E->getSubExpr(), optAddr, optTL);
-  
-  ManagedValue result = SGF.manageBufferForExprResult(optAddr, optTL, C);
+
+  OptionalTypeKind OTK;
+  E->getType()->getAnyOptionalObjectType(OTK);
+  assert(OTK != OTK_None);
+
+  auto someDecl = SGF.getASTContext().getOptionalSomeDecl(OTK);
+
+  ManagedValue result = SGF.emitInjectEnum(E, ArgumentSource(E->getSubExpr()),
+                                           SGF.getLoweredType(E->getType()),
+                                           someDecl, C);
   if (result.isInContext())
     return RValue();
   return RValue(SGF, E, result);

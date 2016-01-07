@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -19,6 +19,8 @@
 
 #include "swift/Basic/SourceLoc.h"
 #include "swift/Basic/UUID.h"
+#include "swift/Basic/STLExtras.h"
+#include "swift/Basic/Range.h"
 #include "swift/AST/Identifier.h"
 #include "swift/AST/KnownProtocols.h"
 #include "swift/AST/Ownership.h"
@@ -462,7 +464,7 @@ public:
   static bool canAttributeAppearOnDecl(DeclAttrKind DK, const Decl *D);
 
   /// Returns true if multiple instances of an attribute kind
-  /// can appear on a delcaration.
+  /// can appear on a declaration.
   static bool allowMultipleAttributes(DeclAttrKind DK) {
     return getOptions(DK) & AllowMultipleAttributes;
   }
@@ -642,7 +644,7 @@ enum class MinVersionComparison {
   Unavailable,
 
   /// The entity might be unavailable, because it was introduced after
-  /// the minimimum version.
+  /// the minimum version.
   PotentiallyUnavailable,
 
   /// The entity has been obsoleted.
@@ -1148,6 +1150,31 @@ public:
   }
 };
 
+/// The internal @_migration_id attribute, which is used to keep track of stdlib
+/// changes for migration purposes.
+class MigrationIdAttr : public DeclAttribute {
+  StringRef Ident;
+  StringRef PatternId;
+
+public:
+  MigrationIdAttr(SourceLoc atLoc, SourceLoc attrLoc, SourceLoc lParenLoc,
+                  StringRef ident, StringRef patternId,
+                  SourceLoc rParenLoc, bool implicit)
+    : DeclAttribute(DAK_MigrationId, attrLoc,
+                    SourceRange(atLoc, rParenLoc), implicit),
+      Ident(ident), PatternId(patternId) {}
+
+  /// Retrieve the migration identifier associated with the symbol.
+  StringRef getIdent() const { return Ident; }
+
+  /// Retrieve pattern identifier associated with the symbol.
+  StringRef getPatternId() const { return PatternId; }
+
+  static bool classof(const DeclAttribute *DA) {
+    return DA->getKind() == DAK_MigrationId;
+  }
+};
+
 /// \brief Attributes that may be applied to declarations.
 class DeclAttributes {
   /// Linked list of declaration attributes.
@@ -1256,6 +1283,34 @@ public:
       if (Attr->getKind() == DK && (Attr->isValid() || AllowInvalid))
         return Attr;
     return nullptr;
+  }
+
+private:
+  /// Predicate used to filter MatchingAttributeRange.
+  template <typename ATTR, bool AllowInvalid> struct ToAttributeKind {
+    ToAttributeKind() {}
+
+    Optional<const DeclAttribute *>
+    operator()(const DeclAttribute *Attr) const {
+      if (isa<ATTR>(Attr) && (Attr->isValid() || AllowInvalid))
+        return Attr;
+      return None;
+    }
+  };
+
+public:
+  template <typename ATTR, bool AllowInvalid>
+  using AttributeKindRange =
+      OptionalTransformRange<llvm::iterator_range<const_iterator>,
+                             ToAttributeKind<ATTR, AllowInvalid>,
+                             const_iterator>;
+
+  /// Return a range with all attributes in DeclAttributes with AttrKind
+  /// ATTR.
+  template <typename ATTR, bool AllowInvalid>
+  AttributeKindRange<ATTR, AllowInvalid> getAttributes() const {
+    return AttributeKindRange<ATTR, AllowInvalid>(
+        make_range(begin(), end()), ToAttributeKind<ATTR, AllowInvalid>());
   }
 
   // Remove the given attribute from the list of attributes. Used when

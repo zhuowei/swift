@@ -74,10 +74,18 @@ let _ = 1["1"]  // expected-error {{ambiguous use of 'subscript'}}
 // rdar://17687826 - QoI: error message when reducing to an untyped dictionary isn't helpful
 let squares = [ 1, 2, 3 ].reduce([:]) { (dict, n) in // expected-error {{cannot invoke 'reduce' with an argument list of type '([_ : _], @noescape (_, Int) throws -> _)'}}
   // expected-note @-1 {{expected an argument list of type '(T, combine: @noescape (T, Int) throws -> T)'}}
-  var dict = dict // expected-error {{type of expression is ambiguous without more context}}
+  var dict = dict
 
   dict[n] = n * n
   return dict
 }
+
+// <rdar://problem/23670252> QoI: Misleading error message when assigning a value from [String : AnyObject]
+func r23670252(dictionary: [String : AnyObject], someObject: AnyObject) {
+  let color : String?
+  color = dictionary["color"]  // expected-error {{cannot assign value of type 'AnyObject?' to type 'String?'}}
+  _ = color
+}
+
 
 

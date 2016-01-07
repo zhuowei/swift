@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2014 - 2015 Apple Inc. and the Swift project authors
+// Copyright (c) 2014 - 2016 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See http://swift.org/LICENSE.txt for license information
@@ -83,6 +83,30 @@ func _typeName(type: Any.Type, qualified: Bool = true) -> String {
     input: UnsafeBufferPointer(start: stringPtr, count: count))
 }
 
+@warn_unused_result
+@_silgen_name("swift_stdlib_demangleName")
+func _stdlib_demangleNameImpl(
+  mangledName: UnsafePointer<UInt8>,
+  _ mangledNameLength: UInt,
+  _ demangledName: UnsafeMutablePointer<String>)
+
+// NB: This function is not used directly in the Swift codebase, but is
+// exported for Xcode support. Please coordinate before changing.
+@warn_unused_result
+public // @testable
+func _stdlib_demangleName(mangledName: String) -> String {
+  let mangledNameUTF8 = Array(mangledName.utf8)
+  return mangledNameUTF8.withUnsafeBufferPointer {
+    (mangledNameUTF8) in
+    let (_, demangledName) = _withUninitializedString {
+      _stdlib_demangleNameImpl(
+        mangledNameUTF8.baseAddress, UInt(mangledNameUTF8.endIndex),
+        $0)
+    }
+    return demangledName
+  }
+}
+
 /// Returns `floor(log(x))`.  This equals to the position of the most
 /// significant non-zero bit, or 63 - number-of-zeros before it.
 ///
@@ -100,7 +124,7 @@ func _typeName(type: Any.Type, qualified: Bool = true) -> String {
 public // @testable
 func _floorLog2(x: Int64) -> Int {
   _sanityCheck(x > 0, "_floorLog2 operates only on non-negative integers")
-  // Note: use unchecked subtraction because we this expression can not
+  // Note: use unchecked subtraction because we this expression cannot
   // overflow.
   return 63 &- Int(_countLeadingZeros(x))
 }

@@ -30,6 +30,8 @@ static_assert(std::is_same<ssize_t, swift::__swift_ssize_t>::value,
 #ifdef __ANDROID__
 extern "C" {
 extern size_t dlmalloc_usable_size(void*);
+// arc4random_random is missing in headers but does exist
+extern unsigned int arc4random_uniform(unsigned int upper_bound);
 }
 #endif
 
@@ -78,21 +80,12 @@ size_t _swift_stdlib_malloc_size(const void *ptr) {
 #error No malloc_size analog known for this platform/libc.
 #endif
 
-#ifndef __ANDROID__
 __swift_uint32_t _swift_stdlib_arc4random(void) { return arc4random(); }
 
 __swift_uint32_t
 _swift_stdlib_arc4random_uniform(__swift_uint32_t upper_bound) {
   return arc4random_uniform(upper_bound);
 }
-#else
-// FIXME: Android: chosen by fair dice roll
-__swift_uint32_t _swift_stdlib_arc4random(void) { return 4; }
-__swift_uint32_t
-_swift_stdlib_arc4random_uniform(__swift_uint32_t upper_bound) {
-  return 0;
-}
-#endif
 
 } // namespace swift
 

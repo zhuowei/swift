@@ -2,7 +2,7 @@ set(swift_stubs_objc_sources)
 set(swift_stubs_unicode_normalization_sources)
 set(swift_stubs_link_libraries)
 
-if(SWIFT_HOST_VARIANT MATCHES "${SWIFT_DARWIN_VARIANTS}")
+if(SWIFT_HOST_VARIANT MATCHES "${SWIFT_DARWIN_VARIANTS}" AND NOT swift_build_android)
   set(swift_stubs_objc_sources
       Availability.mm
       FoundationHelpers.mm
@@ -19,14 +19,20 @@ else()
       ${ICU_UC_INCLUDE_DIR} ${ICU_I18N_INCLUDE_DIR})
 endif()
 
+if(swift_build_android)
+  set(android_extra_deps
+    android_support/Android_log2.cpp
+    android_support/Android_log2f.cpp
+  )
+endif()
+
 add_swift_library(swiftStdlibStubs IS_STDLIB IS_STDLIB_CORE
   Assert.cpp
   GlobalObjects.cpp
   LibcShims.cpp
   Stubs.cpp
   UnicodeExtendedGraphemeClusters.cpp.gyb
-  android_support/Android_log2.cpp
-  android_support/Android_log2f.cpp
+  ${android_extra_deps}
   ${swift_stubs_objc_sources}
   ${swift_stubs_unicode_normalization_sources}
   C_COMPILE_FLAGS ${SWIFT_CORE_CXX_FLAGS}

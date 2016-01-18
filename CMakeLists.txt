@@ -507,6 +507,20 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
     set(swift_can_crosscompile_stdlib TRUE)
   endif()
 
+  is_sdk_requested(ANDROID swift_build_android)
+  if(swift_build_android AND ${swift_can_crosscompile_stdlib})
+    set(OVERRIDE_ENABLE_OBJC_INTEROP 0)
+    if("${SWIFT_ANDROID_NDK_PATH}" STREQUAL "")
+      message(FATAL_ERROR "environmental variable ANDROID_NDK_HOME not set")
+    endif()
+    set(CMAKE_EXECUTABLE_FORMAT "ELF")
+    configure_sdk_unix(ANDROID "Android" "android" "android" "armv7" "armv7-none-linux-androideabi")
+    set(SWIFT_SDK_ANDROID_PATH "${SWIFT_ANDROID_NDK_PATH}/platforms/android-16/arch-arm")
+
+    set(SWIFT_PRIMARY_VARIANT_SDK_default "ANDROID")
+    set(SWIFT_PRIMARY_VARIANT_ARCH_default "armv7")
+  endif()
+
   is_sdk_requested(IOS swift_build_ios)
   if(swift_build_ios AND ${swift_can_crosscompile_stdlib})
     configure_sdk_darwin(

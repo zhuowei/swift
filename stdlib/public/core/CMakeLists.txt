@@ -136,7 +136,7 @@ set(SWIFTLIB_SOURCES
 set(swift_core_link_flags)
 set(swift_core_framework_depends)
 set(swift_core_private_link_libraries)
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND NOT swift_build_android)
   list(APPEND swift_core_link_flags "-all_load")
   list(APPEND swift_core_private_link_libraries swiftRuntime swiftStdlibStubs)
   list(APPEND swift_core_framework_depends Foundation)

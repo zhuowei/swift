@@ -54,16 +54,15 @@ function(_add_variant_c_compile_link_flags
     ${${result_var_name}}
     "-target" "${SWIFT_SDK_${sdk}_ARCH_${arch}_TRIPLE}")
 
-  list(APPEND result
-    "-isysroot" "${SWIFT_SDK_${sdk}_PATH}")
-
   if("${sdk}" STREQUAL "ANDROID")
     list(APPEND result
         "--sysroot=${SWIFT_SDK_${sdk}_PATH}")
+  else()
+    list(APPEND result
+      "-isysroot" "${SWIFT_SDK_${sdk}_PATH}")
   endif()
 
-
-  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin" AND NOT swift_build_android)
     list(APPEND result
         "-arch" "${arch}"
         "-F" "${SWIFT_SDK_${sdk}_PATH}/../../../Developer/Library/Frameworks"
@@ -126,7 +125,7 @@ function(_add_variant_swift_compile_flags
       "-sdk" "${SWIFT_SDK_${sdk}_PATH}"
       "-target" "${SWIFT_SDK_${sdk}_ARCH_${arch}_TRIPLE}")
 
-  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin" AND NOT swift_build_android)
     list(APPEND result
         "-F" "${SWIFT_SDK_${sdk}_PATH}/../../../Developer/Library/Frameworks")
   endif()
@@ -178,9 +177,9 @@ function(_add_variant_link_flags
     list(APPEND result
         "-Wl,-Bsymbolic"
         "-ldl"
-        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/4.8"
+        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/darwin-x86_64/lib/gcc/arm-linux-androideabi/4.8"
         "${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_shared.so"
-        "-L${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a")
+        "-L${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a") # XXX: try PATH/lib here?
   else()
     list(APPEND result "-lobjc")
   endif()
@@ -628,7 +627,7 @@ function(_add_swift_lipo_target target output)
     endif()
   endforeach()
 
-  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin" AND NOT swift_build_android)
     # Use lipo to create the final binary.
     add_custom_command_target(unused_var
         COMMAND "${LIPO}" "-create" "-output" "${output}" ${source_binaries}
@@ -913,7 +912,7 @@ function(_add_swift_library_single target name)
     endforeach()
   endif()
 
-  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin" AND NOT swift_build_android)
     set(install_name_dir "@rpath")
     if(SWIFTLIB_SINGLE_IS_STDLIB)
       set(install_name_dir "${SWIFT_DARWIN_STDLIB_INSTALL_NAME_DIR}")

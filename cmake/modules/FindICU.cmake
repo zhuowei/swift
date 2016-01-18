@@ -26,9 +26,14 @@ foreach(MODULE ${ICU_FIND_COMPONENTS})
     set(ICU_${MODULE}_LIBRARIES ${ICU_${MODULE}_LIBRARY})
   endif()
 endforeach()
+
 message("FIXME Android: ICU")
-set(ICU_I18N_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../icu/source/i18n")
-set(ICU_UC_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../icu/source/common")
+message("${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/icu/source/i18n")
+
+set(ICU_I18N_LIBRARIES "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a")
+set(ICU_UC_LIBRARIES "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a")
+set(ICU_I18N_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/icu/source/i18n")
+set(ICU_UC_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/icu/source/common")
 
 find_package_handle_standard_args(ICU DEFAULT_MSG ${ICU_REQUIRED})
 mark_as_advanced(${ICU_REQUIRED})

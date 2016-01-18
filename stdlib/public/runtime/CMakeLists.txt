@@ -23,7 +23,7 @@ set(LLVM_OPTIONAL_SOURCES
 
 set(swift_runtime_objc_sources)
 set(swift_runtime_unicode_normalization_sources)
-if(SWIFT_HOST_VARIANT MATCHES "${SWIFT_DARWIN_VARIANTS}")
+if(SWIFT_HOST_VARIANT MATCHES "${SWIFT_DARWIN_VARIANTS}" AND NOT swift_build_android)
   set(swift_runtime_objc_sources
       ErrorObject.mm
       SwiftObject.mm

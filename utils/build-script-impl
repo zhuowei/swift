@@ -141,7 +141,7 @@ KNOWN_SETTINGS=(
     build-swift-tools           "1"              "set to 1 to build Swift host tools"
     build-swift-stdlib          "1"              "set to 1 to build the Swift standard library"
     build-swift-sdk-overlay     "1"              "set to 1 to build the Swift SDK overlay"
-    build-swift-static-stdlib   "0"              "set to 1 to build static versions of the Swift standard library and SDK overlay"
+    build-swift-static-stdlib   "1"              "set to 1 to build static versions of the Swift standard library and SDK overlay"
     build-swift-examples        "1"              "set to 1 to build examples"
     build-swift-perf-testsuite  "0"              "set to 1 to build perf test suite"
     source-tree-includes-tests  "1"              "set to 0 to allow the build to proceed when 'test' directory is missing (required for B&I builds)"
@@ -179,7 +179,7 @@ KNOWN_SETTINGS=(
     swift-enable-target-android "1"              "Enable compiler support for targeting Android"
     swift-runtime-enable-dtrace "0"              "Enable runtime dtrace support"
     swift-runtime-enable-leak-checker   "0"              "Enable leaks checking routines in the runtime"
-    use-gold-linker             "1"               "Enable using the gold linker"
+    use-gold-linker             "0"               "Enable using the gold linker"
     darwin-toolchain-bundle-identifier ""        "CFBundleIdentifier for xctoolchain info plist"
     darwin-toolchain-display-name      ""        "Display Name for xctoolcain info plist"
     darwin-toolchain-name              ""        "Directory name for xctoolchain"
@@ -370,6 +370,7 @@ function set_deployment_target_based_options() {
                         -DSWIFT_HOST_VARIANT_ARCH="armv7k"
                     )
                     ;;
+
                 *)
                     echo "Unknown deployment target"
                     exit 1
@@ -397,7 +398,8 @@ function set_deployment_target_based_options() {
             fi
 
             ;;
-            android-*)
+
+        android-*)
             case ${deployment_target} in
                 android-armv7)
                     llvm_host_triple="arm-linux-androideabi"
@@ -406,6 +408,7 @@ function set_deployment_target_based_options() {
                         -DCMAKE_C_FLAGS="$(cmark_c_flags $deployment_target)"
                         -DCMAKE_CXX_FLAGS="$(cmark_c_flags $deployment_target)"
                         -DCMAKE_SYSROOT:PATH="FIXME THE SYSROOT"
+                        -DCMAKE_OSX_SYSROOT:PATH=""
                     )
                     swift_cmake_options=(
                         -DSWIFT_HOST_VARIANT_ARCH="armv7"
@@ -858,17 +861,18 @@ case "$(uname -s -m)" in
     Darwin\ x86_64)
         STDLIB_DEPLOYMENT_TARGETS=(
             "macosx-x86_64"
-            "iphonesimulator-i386"
-            "iphonesimulator-x86_64"
-            "appletvsimulator-x86_64"
-            "watchsimulator-i386"
+            #"iphonesimulator-i386"
+            #"iphonesimulator-x86_64"
+            #"appletvsimulator-x86_64"
+            #"watchsimulator-i386"
 
             # Put iOS native targets last so that we test them last (it takes a
             # long time).
-            "iphoneos-arm64"
-            "iphoneos-armv7"
-            "appletvos-arm64"
-            "watchos-armv7k"
+            "android-armv7"
+            #"iphoneos-arm64"
+            #"iphoneos-armv7"
+            #"appletvos-arm64"
+            #"watchos-armv7k"
         )
         ;;
 
@@ -1473,21 +1477,22 @@ for deployment_target in "${NATIVE_TOOLS_DEPLOYMENT_TARGETS[@]}" "${CROSS_TOOLS_
         build_targets=(all)
         cmake_options=("${COMMON_CMAKE_OPTIONS[@]}")
 
+        # FIXME: remove the && 0
         # Add in gold linker support if requested.
-        if [[ "${USE_GOLD_LINKER}" ]]; then
-            echo "${product}: using gold linker"
-            if [[ "${product}" != "swift" ]]; then
-                # All other projects override the linker flags to add in
-                # gold linker support.
-                cmake_options=(
-                    "${cmake_options[@]}"
-                    -DCMAKE_EXE_LINKER_FLAGS:STRING="-fuse-ld=gold"
-                    -DCMAKE_SHARED_LINKER_FLAGS:STRING="-fuse-ld=gold"
-                )
-            fi
-        else
-            echo "${product}: using standard linker"
-        fi
+        # if [[ "${USE_GOLD_LINKER}" ]]; then
+        #     echo "${product}: using gold linker"
+        #     if [[ "${product}" != "swift" ]]; then
+        #         # All other projects override the linker flags to add in
+        #         # gold linker support.
+        #         cmake_options=(
+        #             "${cmake_options[@]}"
+        #             -DCMAKE_EXE_LINKER_FLAGS:STRING="-fuse-ld=gold"
+        #             -DCMAKE_SHARED_LINKER_FLAGS:STRING="-fuse-ld=gold"
+        #         )
+        #     fi
+        # else
+        #     echo "${product}: using standard linker"
+        # fi
 
         PRODUCT=$(toupper ${product})
         llvm_build_dir=$(build_directory ${deployment_target} llvm)
@@ -1572,16 +1577,16 @@ for deployment_target in "${NATIVE_TOOLS_DEPLOYMENT_TARGETS[@]}" "${CROSS_TOOLS_
 
             swift)
                 cmake_options=("${COMMON_CMAKE_OPTIONS[@]}")
-                if [[ "${USE_GOLD_LINKER}" ]]; then
-                    # Swift will selectively use the gold linker on all
-                    # parts except building the standard library.  We
-                    # let the Swift cmake setup figure out how to apply
-                    # that.
-                    cmake_options=(
-                        "${cmake_options[@]}"
-                        -DSWIFT_ENABLE_GOLD_LINKER=TRUE
-                    )
-                fi
+                # if [[ "${USE_GOLD_LINKER}" ]]; then
+                #     # Swift will selectively use the gold linker on all
+                #     # parts except building the standard library.  We
+                #     # let the Swift cmake setup figure out how to apply
+                #     # that.
+                #     cmake_options=(
+                #         "${cmake_options[@]}"
+                #         -DSWIFT_ENABLE_GOLD_LINKER=TRUE
+                #     )
+                # fi
 
                 native_llvm_tools_path=""
                 native_clang_tools_path=""

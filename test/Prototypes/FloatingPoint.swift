@@ -27,7 +27,7 @@ extension UInt32 : FloatingPointRepresentationType {
 //  Ewwww? <rdar://problem/20060017>
 #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
   import Darwin
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
   import Glibc
 #endif
 

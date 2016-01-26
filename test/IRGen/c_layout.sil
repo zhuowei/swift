@@ -1,4 +1,6 @@
-// RUN: %target-swift-frontend -I %S/Inputs/abi %s -emit-ir | FileCheck %s --check-prefix=CHECK-%target-cpu
+// FIXME: Rather than passing `-fsigned-char`, this should test each platform's expected char
+//        signedness. For Android, this means implicitly unsigned. See: https://github.com/apple/swift/pull/1103
+// RUN: %target-swift-frontend -Xcc -fsigned-char -I %S/Inputs/abi %s -emit-ir | FileCheck %s --check-prefix=CHECK-%target-cpu
 
 sil_stage canonical
 import c_layout

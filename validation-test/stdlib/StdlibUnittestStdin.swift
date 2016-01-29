@@ -13,7 +13,7 @@ import ObjectiveC
 
 #if os(OSX) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
 import Glibc
 #endif
 

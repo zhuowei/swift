@@ -24,7 +24,10 @@
 #include "swift/Runtime/Debug.h"
 #include "swift/Basic/Demangle.h"
 #include <cxxabi.h>
+
+#if !defined(__ANDROID__)
 #include <execinfo.h>
+#endif
 
 #ifdef __APPLE__
 #include <asl.h>
@@ -129,10 +132,18 @@ reportBacktrace(int *count)
     if (count) *count = 0;
     return NULL;
   }
+#if defined(__ANDROID__)
+  int symbolCount = 0;
+#else
   int symbolCount = backtrace(addrs, STACK_DEPTH);
+#endif
   if (count) *count = symbolCount;
 
+#if defined(__ANDROID__)
+  char **symbols = NULL;
+#else
   char **symbols = backtrace_symbols(addrs, symbolCount);
+#endif
   free(addrs);
   if (symbols == NULL) {
     if (count) *count = 0;

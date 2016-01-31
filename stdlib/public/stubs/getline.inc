@@ -29,20 +29,12 @@ static ssize_t swift_getline(char **lineptr, size_t *n, FILE *stream)
     /* Free the original ptr */
     if (*lineptr != NULL) free(*lineptr);
 
-    /* Add one more space for '\0' */
-    size_t len = n[0] + 1;
-
-    /* Update the length */
-    n[0] = len;
-
     /* Allocate a new buffer */
+    size_t len = n[0];
     *lineptr = (char*) malloc(len);
 
     /* Copy over the string */
-    memcpy(*lineptr, ptr, len-1);
-
-    /* Write the NULL character */
-    (*lineptr)[len-1] = '\0';
+    memcpy(*lineptr, ptr, len);
 
     /* Return the length of the new buffer */
     return len;

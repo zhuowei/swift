@@ -129,6 +129,7 @@ function(_add_variant_c_compile_flags
   if("${sdk}" STREQUAL "ANDROID")
     list(APPEND result
         "-I${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libcxx/include"
+        "-I${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++abi/libcxxabi/include"
         "-I${SWIFT_ANDROID_NDK_PATH}/sources/android/support/include")
   endif()
 

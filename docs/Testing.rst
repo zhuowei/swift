@@ -107,6 +107,28 @@ targets mentioned above and modify it as necessary. lit.py also has several
 useful features, like timing tests and providing a timeout. Check these features
 out with ``lit.py -h``.
 
+Running tests hosted on an Android device
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You may run tests targeting android-armv7 by connecting a device to run the
+tests on, then pushing the necessary dependencies to that device.
+
+1. Connect your Android device to your computer via USB. Ensure that remote
+   debugging is enabled for that device by following the official instructions:
+   https://developer.chrome.com/devtools/docs/remote-debugging.
+2. Confirm the device is connected by running ``adb devices``. You should see
+   your device listed.
+3. Push the built products for android-armv7 to your device, using the
+   ``utils/android/adb_push_built_products.py`` script. For example, to push
+   the built products at a build directory
+   ``~/swift/Ninja-ReleaseAssert/swift-linux-x86_64``, with an Android NDK
+   placed at ``~/android-ndk-r10e``, run the following:
+
+       $ utils/android/adb_push_built_products.py \
+             ~/swift/build/Ninja-ReleaseAssert/swift-linux-x86_64/lib/swift/android/ \
+             --ndk ~/android-ndk-r10e
+4. Run the test suite for the ``android-armv7`` target.
+
 Writing tests
 -------------
 

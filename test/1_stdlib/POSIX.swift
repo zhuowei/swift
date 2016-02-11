@@ -1,8 +1,12 @@
 // RUN: %target-run-simple-swift
 // REQUIRES: executable_test
 
+// Android Bionic does not provide a working implementation of
+// <semaphore.h>.
+// XFAIL: OS=linux-androideabi
+
 import StdlibUnittest
-#if os(Linux) || os(Android)
+#if os(Linux)
   import Glibc
 #else
   import Darwin

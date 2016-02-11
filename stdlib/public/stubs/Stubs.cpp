@@ -45,7 +45,6 @@
 extern "C" {
 #include "getline.inc"
 #define getline swift_getline
-#include "mulodi4.inc"
 }
 #endif
 
@@ -336,7 +335,7 @@ __muloti4(ti_int a, ti_int b, int* overflow)
 
 #endif
 
-#if defined(__linux__) && defined(__arm__) && !defined(__ANDROID__)
+#if defined(__linux__) && defined(__arm__)
 // Similar to above, but with mulodi4.  Perhaps this is
 // something that shouldn't be done, and is a bandaid over
 // some other lower-level architecture issue that I'm

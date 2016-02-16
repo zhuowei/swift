@@ -5,6 +5,9 @@
 // RUN: %target-run %t/a.out p1 p2 2> %t/err3.log; FileCheck %s < %t/err3.log
 // REQUIRES: executable_test
 
+// This test correctly outputs "fatal error" on an Android device, but
+// the Android test runner interprets the abort as a test failure.
+// XFAIL: OS=linux-androideabi
 
 // The -disable-access-control option let us "call" methods, which are removed
 // by dead method elimination.

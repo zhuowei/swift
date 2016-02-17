@@ -128,29 +128,6 @@ option(SWIFT_ENABLE_LTO
 set(SWIFT_ANDROID_NDK_PATH "$ENV{ANDROID_NDK_HOME}" CACHE STRING
     "Path to the directory that contains the Android NDK tools that are executable on the build machine")
 
-# The following only works with the Ninja generator in CMake >= 3.0.
-set(SWIFT_PARALLEL_COMPILE_JOBS "" CACHE STRING
-  "Define the maximum number of concurrent compilation jobs.")
-if(SWIFT_PARALLEL_COMPILE_JOBS)
-  if(CMAKE_VERSION VERSION_LESS 3.0 OR NOT CMAKE_MAKE_PROGRAM MATCHES "ninja")
-    message(WARNING "Job pooling is only available with Ninja generators and CMake 3.0 and later.")
-  else()
-    set_property(GLOBAL APPEND PROPERTY JOB_POOLS compile_job_pool=${SWIFT_PARALLEL_COMPILE_JOBS})
-    set(CMAKE_JOB_POOL_COMPILE compile_job_pool)
-  endif()
-endif()
-
-set(SWIFT_PARALLEL_LINK_JOBS "1" CACHE STRING
-  "Define the maximum number of concurrent link jobs.")
-if(SWIFT_PARALLEL_LINK_JOBS)
-  if(CMAKE_VERSION VERSION_LESS 3.0 OR NOT CMAKE_MAKE_PROGRAM MATCHES "ninja")
-    message(WARNING "Job pooling is only available with Ninja generators and CMake 3.0 and later.")
-  else()
-    set_property(GLOBAL APPEND PROPERTY JOB_POOLS link_job_pool=${SWIFT_PARALLEL_LINK_JOBS})
-    set(CMAKE_JOB_POOL_LINK link_job_pool)
-  endif()
-endif()
-
 #
 # User-configurable Darwin-specific options.
 #

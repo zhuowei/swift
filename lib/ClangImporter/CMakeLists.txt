@@ -6,6 +6,7 @@ set(generated_include_sources SortedCFDatabase.def.gyb)
 handle_gyb_sources(
     generated_include_targets
     generated_include_sources
+    ""
     "")
 
 add_swift_library(swiftClangImporter

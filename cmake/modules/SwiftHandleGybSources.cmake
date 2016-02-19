@@ -17,19 +17,25 @@ include(SwiftSetIfArchBitness)
 #   targets that invoke gyb.  Every target that depends on the generated
 #   sources should depend on ${dependency_out_var_name} targets.
 #
+# sdk
+#   The platform ("IOS", "LINUX", "ANDROID") the files will be compiled for.
+#   If this is false, the files are platform-independent and will be emitted
+#   into ${CMAKE_CURRENT_BINARY_DIR}/${arch} instead of a platform-specific
+#   destination; this is useful for generated include files.
+#
 # arch
 #   The architecture that the files will be compiled for.  If this is
 #   false, the files are architecture-independent and will be emitted
-#   into ${CMAKE_CURRENT_BINARY_DIR} instead of an architecture-specific
+#   into ${CMAKE_CURRENT_BINARY_DIR}/${sdk} instead of an architecture-specific
 #   destination; this is useful for generated include files.
-function(handle_gyb_sources dependency_out_var_name sources_var_name arch)
+function(handle_gyb_sources dependency_out_var_name sources_var_name sdk arch)
   set(extra_gyb_flags "")
   if (arch)
     set_if_arch_bitness(ptr_size
       ARCH "${arch}"
       CASE_32_BIT "4"
       CASE_64_BIT "8")
-    set(extra_gyb_flags "-DCMAKE_SIZEOF_VOID_P=${ptr_size}")
+    set(extra_gyb_flags "-DCMAKE_SIZEOF_VOID_P=${ptr_size}" "-DCMAKE_SDK=${sdk}")
   endif()
 
   set(gyb_flags
@@ -52,10 +58,12 @@ function(handle_gyb_sources dependency_out_var_name sources_var_name arch)
     if(src STREQUAL src_sans_gyb)
       list(APPEND de_gybbed_sources "${src}")
     else()
-      if (arch)
-        set(dir "${CMAKE_CURRENT_BINARY_DIR}/${ptr_size}")
-      else()
-        set(dir "${CMAKE_CURRENT_BINARY_DIR}")
+      set(dir "${CMAKE_CURRENT_BINARY_DIR}")
+      if(sdk)
+        set(dir "${dir}/${ptr_size}")
+      endif()
+      if(arch)
+        set(dir "${dir}/${ptr_size}")
       endif()
       set(output_file_name "${dir}/${src_sans_gyb}")
       list(APPEND de_gybbed_sources "${output_file_name}")
@@ -72,7 +80,7 @@ function(handle_gyb_sources dependency_out_var_name sources_var_name arch)
             "${CMAKE_COMMAND}" -E remove "${output_file_name}.tmp"
           OUTPUT "${output_file_name}"
           DEPENDS "${gyb_tool_source}" "${src}" "${gyb_extra_sources}"
-          COMMENT "Generating ${src_sans_gyb} from ${src} with ptr size = ${ptr_size}"
+          COMMENT "Generating ${src_sans_gyb} from ${src} with sdk = ${sdk} and ptr size = ${ptr_size}"
           WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
           SOURCES "${src}"
           IDEMPOTENT)

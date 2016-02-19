@@ -848,6 +848,7 @@ function(_add_swift_library_single target name)
   handle_gyb_sources(
       gyb_dependency_targets
       SWIFTLIB_SINGLE_SOURCES
+      "${SWIFTLIB_SINGLE_SDK}"
       "${SWIFTLIB_SINGLE_ARCHITECTURE}")
 
   if (SWIFT_RUNTIME_ENABLE_DTRACE)

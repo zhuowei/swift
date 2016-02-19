@@ -67,7 +67,7 @@ add_swift_library(swiftRuntime IS_STDLIB IS_STDLIB_CORE
   C_COMPILE_FLAGS ${swift_runtime_compile_flags}
   INSTALL_IN_COMPONENT stdlib)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "ANDROID")
   add_swift_library(section_magic_begin IS_STDLIB IS_STDLIB_CORE
     swift_sections.S
     C_COMPILE_FLAGS ${swift_runtime_compile_flags} "-DSWIFT_BEGIN"
@@ -107,4 +107,3 @@ foreach(sdk ${SWIFT_CONFIGURED_SDKS})
 endforeach()
 
 add_custom_target(section_magic ALL DEPENDS ${object_target_list})
-

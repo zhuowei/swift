@@ -16,7 +16,7 @@ foreach(input ${sources})
   #      "${output_dir}/${input}")
   list(APPEND commands
       COMMAND
-        "sed" "-e" "s@SYSROOT@${SWIFT_ANDROID_NDK_PATH}/platforms/android-16/arch-arm@g"
+        "sed" "-e" "s@SYSROOT@${SWIFT_ANDROID_NDK_PATH}/platforms/android-21/arch-arm@g"
         "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
         ">"
         "${output_dir}/${input}")

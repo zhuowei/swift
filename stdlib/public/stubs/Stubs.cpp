@@ -41,12 +41,6 @@
 #include "swift/Runtime/Debug.h"
 #include "swift/Basic/Lazy.h"
 
-#ifdef __ANDROID__
-extern "C" {
-#include "getline.inc"
-#define getline swift_getline
-}
-#endif
 
 static uint64_t uint64ToStringImpl(char *Buffer, uint64_t Value,
                                    int64_t Radix, bool Uppercase,

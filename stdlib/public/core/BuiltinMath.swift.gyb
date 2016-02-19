@@ -48,10 +48,15 @@ def cFuncSuffix(bits):
 UnaryIntrinsicFunctions = [
     'cos', 'sin',
     'exp', 'exp2',
-    'log', 'log10', 'log2',
+    'log', 'log10',
     'fabs',
     'ceil', 'floor', 'nearbyint', 'rint', 'round', 'trunc',
 ]
+# Android doesn't have a native log2 function.
+# FIXME: Incorporate an implementation that works with Swift's license,
+#        or implement one ourselves in 'stdlib/public/stubs'.
+if CMAKE_SDK != "ANDROID":
+    UnaryIntrinsicFunctions += ['log2']
 
 def TypedUnaryIntrinsicFunctions():
     for ufunc in UnaryIntrinsicFunctions:

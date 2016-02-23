@@ -208,6 +208,10 @@ KNOWN_SETTINGS=(
     android-ndk                        ""        "An absolute path to the NDK that will be used as a libc implementation for Android builds"
     android-ndk-version                ""        "A version of the NDK to use when building for Android. Currently only 21 or above is supported"
     android-ndk-toolchain-version      ""        "A version of the toolchain to use when building for Android. Use 4.8 for 32-bit builds, 4.9 for 64-bit builds"
+    android-icu-uc                     ""        "Path to a directory containing libicuuc.so"
+    android-icu-uc-include             ""        "Path to a directory containing headers for libicuuc"
+    android-icu-i18n                   ""        "Path to a directory containing libicui18n.so"
+    android-icu-i18n-include           ""        "Path to a directory containing headers libicui18n"
     export-compile-commands            ""        "set to generate JSON compilation databases for each build product"
 )
 
@@ -1571,6 +1575,10 @@ for deployment_target in "${HOST_TARGET}" "${CROSS_TOOLS_DEPLOYMENT_TARGETS[@]}"
                         -DSWIFT_ANDROID_NDK_PATH="${ANDROID_NDK}"
                         -DSWIFT_ANDROID_NDK_TOOLCHAIN_VERSION="${ANDROID_NDK_TOOLCHAIN_VERSION}"
                         -DSWIFT_ANDROID_SDK_PATH="${ANDROID_NDK}/platforms/android-${ANDROID_NDK_VERSION}/arch-arm"
+                        -DSWIFT_ANDROID_ICU_UC="${ANDROID_ICU_UC}"
+                        -DSWIFT_ANDROID_ICU_UC_INCLUDE="${ANDROID_ICU_UC_INCLUDE}"
+                        -DSWIFT_ANDROID_ICU_I18N="${ANDROID_ICU_I18N}"
+                        -DSWIFT_ANDROID_ICU_I18N_INCLUDE="${ANDROID_ICU_I18N_INCLUDE}"
                     )
                 fi
 

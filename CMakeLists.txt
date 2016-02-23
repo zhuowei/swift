@@ -126,11 +126,19 @@ option(SWIFT_ENABLE_LTO
   "If set to true, build the swift compiler with link time optimization enabled" FALSE)
 
 set(SWIFT_ANDROID_NDK_PATH "" CACHE STRING
-    "Path to the directory that contains the Android NDK tools that are executable on the build machine")
+  "Path to the directory that contains the Android NDK tools that are executable on the build machine")
 set(SWIFT_ANDROID_NDK_TOOLCHAIN_VERSION "" CACHE STRING
-    "A version of the toolchain to use when building for Android. Use 4.8 for 32-bit builds, 4.9 for 64-bit builds")
+  "A version of the toolchain to use when building for Android. Use 4.8 for 32-bit builds, 4.9 for 64-bit builds")
 set(SWIFT_ANDROID_SDK_PATH "" CACHE STRING
-    "Path to the directory that contains the Android SDK tools that will be linked to the swiftc frontend")
+  "Path to the directory that contains the Android SDK tools that will be linked to the swiftc frontend")
+set(SWIFT_ANDROID_ICU_UC "" CACHE STRING
+  "Path to a directory containing libicuuc.so")
+set(SWIFT_ANDROID_ICU_UC_INCLUDE "" CACHE STRING
+  "Path to a directory containing headers for libicuuc")
+set(SWIFT_ANDROID_ICU_I18N "" CACHE STRING
+  "Path to a directory containing libicui18n.so")
+set(SWIFT_ANDROID_ICU_I18N_INCLUDE "" CACHE STRING
+  "Path to a directory containing headers libicui18n")
 
 #
 # User-configurable Darwin-specific options.

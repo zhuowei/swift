@@ -605,6 +605,22 @@ the number of parallel build jobs to use""",
              "Use 4.8 for 32-bit builds, 4.9 for 64-bit builds",
         choices=["4.8", "4.9"],
         default="4.8")
+    android_group.add_argument(
+        "--android-icu-uc",
+        help="Path to a directory containing libicuuc.so",
+        metavar="PATH")
+    android_group.add_argument(
+        "--android-icu-uc-include",
+        help="Path to a directory containing headers for libicuuc",
+        metavar="PATH")
+    android_group.add_argument(
+        "--android-icu-i18n",
+        help="Path to a directory containing libicui18n.so",
+        metavar="PATH")
+    android_group.add_argument(
+        "--android-icu-i18n-include",
+        help="Path to a directory containing headers libicui18n",
+        metavar="PATH")
 
     parser.add_argument("--extra-swift-args", help=textwrap.dedent("""
     Pass through extra flags to swift in the form of a cmake list 'module_regexp;flag'. Can
@@ -642,9 +658,17 @@ the number of parallel build jobs to use""",
             return 1
 
     if args.android:
-        if args.android_ndk is None or args.android_ndk_version is None:
-            print_with_argv0("When building for Android, --android-ndk and "
-                             "--android-ndk-version must be specified.")
+        if args.android_ndk is None or \
+                args.android_ndk_version is None or \
+                args.android_icu_uc is None or \
+                args.android_icu_uc_include is None or \
+                args.android_icu_i18n is None or \
+                args.android_icu_i18n_include is None:
+            print_with_argv0("When building for Android, --android-ndk, "
+                             "--android-ndk-version, --android-icu-uc, "
+                             "--android-icu-uc-include, --android-icu-i18n, "
+                             "and --android-icu-i18n-include must be "
+                             "specified.")
             return 1
 
     # Build cmark if any cmark-related options were specified.
@@ -971,6 +995,10 @@ the number of parallel build jobs to use""",
             "--android-ndk", args.android_ndk,
             "--android-ndk-version", args.android_ndk_version,
             "--android-ndk-toolchain-version", args.android_ndk_toolchain_version,
+            "--android-icu-uc", args.android_icu_uc,
+            "--android-icu-uc-include", args.android_icu_uc_include,
+            "--android-icu-i18n", args.android_icu_i18n,
+            "--android-icu-i18n-include", args.android_icu_i18n_include,
         ]
     build_script_impl_args += build_script_impl_inferred_args
 

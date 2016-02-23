@@ -1,7 +1,5 @@
 # Find libicu's libraries
 
-# Android FIXME: ICU
-
 include(FindPackageHandleStandardArgs)
 
 find_package(PkgConfig)
@@ -26,9 +24,13 @@ foreach(MODULE ${ICU_FIND_COMPONENTS})
     set(ICU_${MODULE}_LIBRARIES ${ICU_${MODULE}_LIBRARY})
   endif()
 endforeach()
-message("FIXME Android: ICU")
-set(ICU_I18N_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../icu/source/i18n")
-set(ICU_UC_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../icu/source/common")
+
+if(NOT "${SWIFT_ANDROID_ICU_UC_INCLUDE}" STREQUAL "")
+  set(ICU_UC_INCLUDE_DIR "${SWIFT_ANDROID_ICU_UC_INCLUDE}")
+endif()
+if(NOT "${SWIFT_ANDROID_ICU_I18N_INCLUDE}" STREQUAL "")
+  set(ICU_I18N_INCLUDE_DIR "${SWIFT_ANDROID_ICU_I18N_INCLUDE}")
+endif()
 
 find_package_handle_standard_args(ICU DEFAULT_MSG ${ICU_REQUIRED})
 mark_as_advanced(${ICU_REQUIRED})

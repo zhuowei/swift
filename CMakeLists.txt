@@ -125,8 +125,12 @@ set(SWIFT_NATIVE_SWIFT_TOOLS_PATH "" CACHE STRING
 option(SWIFT_ENABLE_LTO
   "If set to true, build the swift compiler with link time optimization enabled" FALSE)
 
-set(SWIFT_ANDROID_NDK_PATH "$ENV{ANDROID_NDK_HOME}" CACHE STRING
+set(SWIFT_ANDROID_NDK_PATH "" CACHE STRING
     "Path to the directory that contains the Android NDK tools that are executable on the build machine")
+set(SWIFT_ANDROID_NDK_TOOLCHAIN_VERSION "" CACHE STRING
+    "A version of the toolchain to use when building for Android. Use 4.8 for 32-bit builds, 4.9 for 64-bit builds")
+set(SWIFT_ANDROID_SDK_PATH "" CACHE STRING
+    "Path to the directory that contains the Android SDK tools that will be linked to the swiftc frontend")
 
 #
 # User-configurable Darwin-specific options.
@@ -425,11 +429,8 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 
     is_sdk_requested(ANDROID swift_build_android)
     if(swift_build_android AND ${swift_can_crosscompile_stdlib})
-      if("${SWIFT_ANDROID_NDK_PATH}" STREQUAL "")
-        message(FATAL_ERROR "environmental variable ANDROID_NDK_HOME not set")
-      endif()
       configure_sdk_unix(ANDROID "Android" "android" "android" "armv7" "armv7-none-linux-androideabi")
-      set(SWIFT_SDK_ANDROID_PATH "${SWIFT_ANDROID_NDK_PATH}/platforms/android-21/arch-arm")
+      set(SWIFT_SDK_ANDROID_PATH "${SWIFT_ANDROID_SDK_PATH}")
 
       set(SWIFT_PRIMARY_VARIANT_SDK_default "ANDROID")
       set(SWIFT_PRIMARY_VARIANT_ARCH_default "armv7")

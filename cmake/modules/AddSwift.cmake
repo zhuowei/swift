@@ -59,9 +59,9 @@ function(_add_variant_c_compile_link_flags
 
   if("${sdk}" STREQUAL "ANDROID")
     list(APPEND result
-      "--sysroot=${SWIFT_SDK_${sdk}_PATH}"
+      "--sysroot=${SWIFT_ANDROID_SDK_PATH}"
       # Use the linker included in the Android NDK.
-      "-B" "${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/arm-linux-androideabi/bin/")
+      "-B" "${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-${SWIFT_ANDROID_NDK_TOOLCHAIN_VERSION}/prebuilt/linux-x86_64/arm-linux-androideabi/bin/")
   endif()
 
 
@@ -205,7 +205,7 @@ function(_add_variant_link_flags
   elseif("${sdk}" STREQUAL "ANDROID")
     list(APPEND result
         "-ldl"
-        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/4.8"
+        "-L${SWIFT_ANDROID_NDK_PATH}/toolchains/arm-linux-androideabi-${SWIFT_ANDROID_NDK_TOOLCHAIN_VERSION}/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/${SWIFT_ANDROID_NDK_TOOLCHAIN_VERSION}"
         "${SWIFT_ANDROID_NDK_PATH}/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_shared.so"
         "-L${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a")
   else()

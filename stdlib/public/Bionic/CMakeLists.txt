@@ -42,16 +42,3 @@ add_swift_library(swiftGlibc IS_SDK_OVERLAY
   FILE_DEPENDS copy_bionic_module "${SWIFTLIB_DIR}/bionic"
   TARGET_SDKS ANDROID
   INSTALL_IN_COMPONENT stdlib-experimental)
-
-# FIXME: Android: find where this belongs
-set(iculibs
-    "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/libicudata.so"
-    "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/libicuuc.so"
-    "${CMAKE_SOURCE_DIR}/../libiconv-libicu-android/armeabi-v7a/libicui18n.so"
-)
-
-# TODO: Android: copy this during build as well
-
-swift_install_in_component(stdlib
-    FILES ${iculibs}
-    DESTINATION "lib/swift/android/armv7")

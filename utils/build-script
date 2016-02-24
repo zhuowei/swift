@@ -45,6 +45,9 @@ import swift_build_support.tar
 import swift_build_support.targets
 from swift_build_support.migration import migrate_impl_args
 
+sys.path.append(os.path.join(os.path.dirname(__file__), 'android'))
+import adb.commands
+
 
 # Main entry point for the preset mode.
 def main_preset():
@@ -621,6 +624,12 @@ the number of parallel build jobs to use""",
         "--android-icu-i18n-include",
         help="Path to a directory containing headers libicui18n",
         metavar="PATH")
+    android_group.add_argument(
+        "--android-deploy-device-path",
+        help="Path on an Android device to which built Swift stdlib products "
+             "will be deployed. If running host tests, specify the '{}' "
+             "directory.".format(adb.commands.DEVICE_TEMP_DIR),
+        metavar="PATH")
 
     parser.add_argument("--extra-swift-args", help=textwrap.dedent("""
     Pass through extra flags to swift in the form of a cmake list 'module_regexp;flag'. Can
@@ -978,6 +987,20 @@ the number of parallel build jobs to use""",
     if args.cmake_generator == 'Ninja' and \
        not swift_build_support.ninja.is_ninja_installed():
         build_script_impl_args += ["--build-ninja"]
+    if args.android:
+        build_script_impl_args += [
+            "--android-ndk", args.android_ndk,
+            "--android-ndk-version", args.android_ndk_version,
+            "--android-ndk-toolchain-version", args.android_ndk_toolchain_version,
+            "--android-icu-uc", args.android_icu_uc,
+            "--android-icu-uc-include", args.android_icu_uc_include,
+            "--android-icu-i18n", args.android_icu_i18n,
+            "--android-icu-i18n-include", args.android_icu_i18n_include,
+        ]
+        if args.android_deploy_device_path:
+            build_script_impl_args += [
+                "--android-deploy-device-path", args.android_deploy_device_path,
+            ]
     if args.skip_build_linux:
         build_script_impl_args += ["--skip-build-linux"]
     if args.skip_build_freebsd:

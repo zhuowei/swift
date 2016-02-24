@@ -212,6 +212,7 @@ KNOWN_SETTINGS=(
     android-icu-uc-include             ""        "Path to a directory containing headers for libicuuc"
     android-icu-i18n                   ""        "Path to a directory containing libicui18n.so"
     android-icu-i18n-include           ""        "Path to a directory containing headers libicui18n"
+    android-deploy-device-path         ""        "Path on an Android device to which built Swift stdlib products will be deployed"
     export-compile-commands            ""        "set to generate JSON compilation databases for each build product"
 )
 
@@ -1954,6 +1955,16 @@ for deployment_target in "${HOST_TARGET}" "${CROSS_TOOLS_DEPLOYMENT_TARGETS[@]}"
     done
 done
 # END OF BUILD PHASE
+
+# Deploy Android built products. This is done prior to the install phase, since
+# Android host tests won't run correctly unless the built stdlib is pushed to
+# the device running the tests.
+if [[ ! -z "${ANDROID_DEPLOY_DEVICE_PATH}" ]]; then
+    echo "--- Deploying built products to Android device ---"
+    set -x
+    "${SWIFT_SOURCE_DIR}"/utils/android/adb_push_built_products.py --ndk "${ANDROID_NDK}" --destination "${ANDROID_DEPLOY_DEVICE_PATH}" "$(build_directory ${HOST_TARGET} swift)"/lib/swift/android/
+    { set +x; } 2>/dev/null
+fi
 
 # Trap function to print the current test configuration when tests fail.
 # This is a function so the text is not unnecessarily displayed when running -x.

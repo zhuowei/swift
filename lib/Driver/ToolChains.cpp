@@ -1231,9 +1231,6 @@ toolchains::GenericUnix::constructInvocation(const LinkJobAction &job,
       "cxx-stl/llvm-libc++/libs/armeabi-v7a";
     Arguments.push_back("-L");
     Arguments.push_back(context.Args.MakeArgString(libcxxpath));
-
-    Arguments.push_back("-lgcc");
-    Arguments.push_back("-lc");
   } else {
     // rpaths are not supported on Android.
 

@@ -679,6 +679,9 @@ the number of parallel build jobs to use""",
                              "and --android-icu-i18n-include must be "
                              "specified.")
             return 1
+        # FIXME: lib/Driver/ToolChains.cpp depends on this environment variable
+        #        being set. It should be configured via CMake.
+        os.environ["ANDROID_NDK_HOME"] = args.android_ndk
 
     # Build cmark if any cmark-related options were specified.
     if (args.cmark_build_variant is not None):

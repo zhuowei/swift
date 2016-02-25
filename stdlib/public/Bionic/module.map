@@ -24,107 +24,107 @@ module SwiftBionic [system] {
   // C standard library
   module C {
     //module complex {
-    //  header "SYSROOT/usr/include/complex.h"
+    //  header "GLIBC_INCLUDE_PATH/complex.h"
     //  export *
     //}
     module ctype {
-      header "SYSROOT/usr/include/ctype.h"
+      header "GLIBC_INCLUDE_PATH/ctype.h"
       export *
     }
     module errno {
-      header "SYSROOT/usr/include/errno.h"
+      header "GLIBC_INCLUDE_PATH/errno.h"
       export *
     }
 
     // glibc specific
     module features {
-      header "SYSROOT/usr/include/features.h"
+      header "GLIBC_INCLUDE_PATH/features.h"
       export *
     }
 
     module fenv {
-      header "SYSROOT/usr/include/fenv.h"
+      header "GLIBC_INCLUDE_PATH/fenv.h"
       export *
     }
     
     // note: supplied by compiler
     // module float {
-    //   header "SYSROOT/usr/include/float.h"
+    //   header "GLIBC_INCLUDE_PATH/float.h"
     //   export *
     // }
     
     module inttypes {
-      header "SYSROOT/usr/include/inttypes.h"
+      header "GLIBC_INCLUDE_PATH/inttypes.h"
       export *
     }
     
     // note: potentially supplied by compiler
     // module iso646 {
-    //   header "SYSROOT/usr/include/iso646.h"
+    //   header "GLIBC_INCLUDE_PATH/iso646.h"
     //   export *
     // }
     // module limits {
-    //   header "SYSROOT/usr/include/limits.h"
+    //   header "GLIBC_INCLUDE_PATH/limits.h"
     //   export *
     // }
     
     module locale {
-      header "SYSROOT/usr/include/locale.h"
+      header "GLIBC_INCLUDE_PATH/locale.h"
       export *
     }
     module math {
-      header "SYSROOT/usr/include/math.h"
+      header "GLIBC_INCLUDE_PATH/math.h"
       export *
     }
     module setjmp {
-      header "SYSROOT/usr/include/setjmp.h"
+      header "GLIBC_INCLUDE_PATH/setjmp.h"
       export *
     }
     module signal {
-      header "SYSROOT/usr/include/signal.h"
+      header "GLIBC_INCLUDE_PATH/signal.h"
       export *
     }
 
     // note: supplied by the compiler
     // module stdarg {
-    //   header "SYSROOT/usr/include/stdarg.h"
+    //   header "GLIBC_INCLUDE_PATH/stdarg.h"
     //   export *
     // }
     // module stdbool {
-    //   header "SYSROOT/usr/include/stdbool.h"
+    //   header "GLIBC_INCLUDE_PATH/stdbool.h"
     //   export *
     // }
     // module stddef {
-    //   header "SYSROOT/usr/include/stddef.h"
+    //   header "GLIBC_INCLUDE_PATH/stddef.h"
     //   export *
     // }    
     // module stdint {
-    //   header "SYSROOT/usr/include/stdint.h"
+    //   header "GLIBC_INCLUDE_PATH/stdint.h"
     //   export *
     // }
     
     module stdio {
-      header "SYSROOT/usr/include/stdio.h"
+      header "GLIBC_INCLUDE_PATH/stdio.h"
       export *
     }
     module stdlib {
-      header "SYSROOT/usr/include/stdlib.h"
+      header "GLIBC_INCLUDE_PATH/stdlib.h"
       export *
       export stddef
     }
     module string {
-      header "SYSROOT/usr/include/string.h"
+      header "GLIBC_INCLUDE_PATH/string.h"
       export *
     }
 
     // note: supplied by the compiler
     // explicit module tgmath {
-    //   header "SYSROOT/usr/include/tgmath.h"
+    //   header "GLIBC_INCLUDE_PATH/tgmath.h"
     //   export *
     // }
     
     module time {
-      header "SYSROOT/usr/include/time.h"
+      header "GLIBC_INCLUDE_PATH/time.h"
       export *
     }
   }
@@ -132,132 +132,132 @@ module SwiftBionic [system] {
   // POSIX
   module POSIX {
     //module aio {
-    //  header "SYSROOT/usr/include/aio.h"
+    //  header "GLIBC_INCLUDE_PATH/aio.h"
     //  export *
     //}
     module arpa {
       module inet {
-        header "SYSROOT/usr/include/arpa/inet.h"
+        header "GLIBC_INCLUDE_PATH/arpa/inet.h"
         export *
       }
       export *
     }
     //module cpio {
-    //  header "SYSROOT/usr/include/cpio.h"
+    //  header "GLIBC_INCLUDE_PATH/cpio.h"
     //  export *
     //}
     module dirent {
-      header "SYSROOT/usr/include/dirent.h"
+      header "GLIBC_INCLUDE_PATH/dirent.h"
       export *
     }
     module dlfcn {
-      header "SYSROOT/usr/include/dlfcn.h"
+      header "GLIBC_INCLUDE_PATH/dlfcn.h"
       export *
     }
     module fcntl {
-      header "SYSROOT/usr/include/fcntl.h"
+      header "GLIBC_INCLUDE_PATH/fcntl.h"
       export *
     }
     //module fmtmsg {
-    //  header "SYSROOT/usr/include/fmtmsg.h"
+    //  header "GLIBC_INCLUDE_PATH/fmtmsg.h"
     //  export *
     //}
     module fnmatch {
-      header "SYSROOT/usr/include/fnmatch.h"
+      header "GLIBC_INCLUDE_PATH/fnmatch.h"
       export *
     }
     //module ftw {
-    //  header "SYSROOT/usr/include/ftw.h"
+    //  header "GLIBC_INCLUDE_PATH/ftw.h"
     //  export *
     //}
     //module glob {
-    //  header "SYSROOT/usr/include/glob.h"
+    //  header "GLIBC_INCLUDE_PATH/glob.h"
     //  export *
     //}
     module grp {
-      header "SYSROOT/usr/include/grp.h"
+      header "GLIBC_INCLUDE_PATH/grp.h"
       export *
     }
     //module iconv {
-    //  header "SYSROOT/usr/include/iconv.h"
+    //  header "GLIBC_INCLUDE_PATH/iconv.h"
     //  export *
     //}
     module ioctl {
-      header "SYSROOT/usr/include/sys/ioctl.h"
+      header "GLIBC_INCLUDE_PATH/sys/ioctl.h"
       export *
     }
     //module langinfo {
-    //  header "SYSROOT/usr/include/langinfo.h"
+    //  header "GLIBC_INCLUDE_PATH/langinfo.h"
     //  export *
     //}
     module libgen {
-      header "SYSROOT/usr/include/libgen.h"
+      header "GLIBC_INCLUDE_PATH/libgen.h"
       export *
     }
     //module monetary {
-    //  header "SYSROOT/usr/include/monetary.h"
+    //  header "GLIBC_INCLUDE_PATH/monetary.h"
     //  export *
     //}
     //module netdb {
-    //  header "SYSROOT/usr/include/netdb.h"
+    //  header "GLIBC_INCLUDE_PATH/netdb.h"
     //  export *
     //}
     module net {
       module if {
-        header "SYSROOT/usr/include/net/if.h"
+        header "GLIBC_INCLUDE_PATH/net/if.h"
         export *
       }
     }
     module netinet {
       module in {
-        header "SYSROOT/usr/include/netinet/in.h"
+        header "GLIBC_INCLUDE_PATH/netinet/in.h"
         export *
 
-        exclude header "SYSROOT/usr/include/netinet6/in6.h"
+        exclude header "GLIBC_INCLUDE_PATH/netinet6/in6.h"
       }
       module tcp {
-        header "SYSROOT/usr/include/netinet/tcp.h"
+        header "GLIBC_INCLUDE_PATH/netinet/tcp.h"
         export *
       }
     }
     //module nl_types {
-    //  header "SYSROOT/usr/include/nl_types.h"
+    //  header "GLIBC_INCLUDE_PATH/nl_types.h"
     //  export *
     //}
     module poll {
-      header "SYSROOT/usr/include/poll.h"
+      header "GLIBC_INCLUDE_PATH/poll.h"
       export *
     }
     module pthread {
-      header "SYSROOT/usr/include/pthread.h"
+      header "GLIBC_INCLUDE_PATH/pthread.h"
       export *
     }
     module pwd {
-      header "SYSROOT/usr/include/pwd.h"
+      header "GLIBC_INCLUDE_PATH/pwd.h"
       export *
     }
     module regex {
-      header "SYSROOT/usr/include/regex.h"
+      header "GLIBC_INCLUDE_PATH/regex.h"
       export *
     }
     module sched {
-      header "SYSROOT/usr/include/sched.h"
+      header "GLIBC_INCLUDE_PATH/sched.h"
       export *
     }
     //module search {
-    //  header "SYSROOT/usr/include/search.h"
+    //  header "GLIBC_INCLUDE_PATH/search.h"
     //  export *
     //}
     module semaphore {
-      header "SYSROOT/usr/include/semaphore.h"
+      header "GLIBC_INCLUDE_PATH/semaphore.h"
       export *
     }
     //module spawn {
-    //  header "SYSROOT/usr/include/spawn.h"
+    //  header "GLIBC_INCLUDE_PATH/spawn.h"
     //  export *
     //}
     module strings {
-      header "SYSROOT/usr/include/strings.h"
+      header "GLIBC_INCLUDE_PATH/strings.h"
       export *
     }
 
@@ -265,113 +265,109 @@ module SwiftBionic [system] {
       export *
 
       module ipc {
-        header "SYSROOT/usr/include/sys/ipc.h"
+        header "GLIBC_INCLUDE_PATH/sys/ipc.h"
         export *
       }
       module mman {
-        header "SYSROOT/usr/include/sys/mman.h"
+        header "GLIBC_INCLUDE_PATH/sys/mman.h"
         export *
       }
       //module msg {
-      //  header "SYSROOT/usr/include/sys/msg.h"
+      //  header "GLIBC_INCLUDE_PATH/sys/msg.h"
       //  export *
       //}
       module resource {
-        header "SYSROOT/usr/include/sys/resource.h"
+        header "GLIBC_INCLUDE_PATH/sys/resource.h"
         export *
       }
       module select {
-        header "SYSROOT/usr/include/sys/select.h"
+        header "GLIBC_INCLUDE_PATH/sys/select.h"
         export *
       }
       //module sem {
-      //  header "SYSROOT/usr/include/sys/sem.h"
+      //  header "GLIBC_INCLUDE_PATH/sys/sem.h"
       //  export *
       //}
       //module shm {
-      //  header "SYSROOT/usr/include/sys/shm.h"
+      //  header "GLIBC_INCLUDE_PATH/sys/shm.h"
       //  export *
       //}/*
       module socket {
-        header "SYSROOT/usr/include/sys/socket.h"
+        header "GLIBC_INCLUDE_PATH/sys/socket.h"
         export *
       }
       module stat {
-        header "SYSROOT/usr/include/sys/stat.h"
+        header "GLIBC_INCLUDE_PATH/sys/stat.h"
         export *
       }
       //module statvfs {
-      //  header "SYSROOT/usr/include/sys/statvfs.h"
+      //  header "GLIBC_INCLUDE_PATH/sys/statvfs.h"
       //  export *
       //}
       module time {
-        header "SYSROOT/usr/include/sys/time.h"
+        header "GLIBC_INCLUDE_PATH/sys/time.h"
         export *
       }
       module times {
-        header "SYSROOT/usr/include/sys/times.h"
+        header "GLIBC_INCLUDE_PATH/sys/times.h"
         export *
       }
       module types {
-        header "SYSROOT/usr/include/sys/types.h"
+        header "GLIBC_INCLUDE_PATH/sys/types.h"
         export *
       }
       module uio {
-        header "SYSROOT/usr/include/sys/uio.h"
+        header "GLIBC_INCLUDE_PATH/sys/uio.h"
         export *
       }
       module un {
-        header "SYSROOT/usr/include/sys/un.h"
+        header "GLIBC_INCLUDE_PATH/sys/un.h"
         export *
       }
       module utsname {
-        header "SYSROOT/usr/include/sys/utsname.h"
+        header "GLIBC_INCLUDE_PATH/sys/utsname.h"
         export *
       }
       module wait {
-        header "SYSROOT/usr/include/sys/wait.h"
+        header "GLIBC_INCLUDE_PATH/sys/wait.h"
         export *
       }
     }
     //module syslog {
-    //  header "SYSROOT/usr/include/syslog.h"
+    //  header "GLIBC_INCLUDE_PATH/syslog.h"
     //  export *
     //}
     //module tar {
-    //  header "SYSROOT/usr/include/tar.h"
+    //  header "GLIBC_INCLUDE_PATH/tar.h"
     //  export *
     //}
     module termios {
-      header "SYSROOT/usr/include/termios.h"
+      header "GLIBC_INCLUDE_PATH/termios.h"
       export *
     }
     //module ulimit {
-    //  header "SYSROOT/usr/include/ulimit.h"
+    //  header "GLIBC_INCLUDE_PATH/ulimit.h"
     //  export *
     //}
     module unistd {
-      header "SYSROOT/usr/include/unistd.h"
+      header "GLIBC_INCLUDE_PATH/unistd.h"
       export *
     }
     module utime {
-      header "SYSROOT/usr/include/utime.h"
+      header "GLIBC_INCLUDE_PATH/utime.h"
       export *
     }
     //module utmpx {
-    //  header "SYSROOT/usr/include/utmpx.h"
+    //  header "GLIBC_INCLUDE_PATH/utmpx.h"
     //  export *
     //}
     //module wait {
-    //  header "SYSROOT/usr/include/wait.h"
+    //  header "GLIBC_INCLUDE_PATH/wait.h"
     //  export *
     //}
     //module wordexp {
-    //  header "SYSROOT/usr/include/wordexp.h"
+    //  header "GLIBC_INCLUDE_PATH/wordexp.h"
     //  export *
     //}
-    module spawn {
-      header "spawn.h"
-      export *
-    }
   }
 }

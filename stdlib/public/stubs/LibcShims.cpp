@@ -21,7 +21,7 @@
 #include <bsd/stdlib.h>
 #endif
 
-// android's ssize_t is an int, which is the same size as long int
+// Android's ssize_t is an int, which is the same size as long int.
 #ifndef __ANDROID__
 static_assert(std::is_same<ssize_t, swift::__swift_ssize_t>::value,
               "__swift_ssize_t is wrong");
@@ -30,7 +30,7 @@ static_assert(std::is_same<ssize_t, swift::__swift_ssize_t>::value,
 #ifdef __ANDROID__
 extern "C" {
 extern size_t dlmalloc_usable_size(void*);
-// arc4random_random is missing in headers but does exist
+// arc4random_random is missing in Android headers, but does exist.
 extern unsigned int arc4random_uniform(unsigned int upper_bound);
 }
 #endif
@@ -72,7 +72,6 @@ size_t _swift_stdlib_malloc_size(const void *ptr) {
   return malloc_usable_size(const_cast<void *>(ptr));
 }
 #elif defined(__ANDROID__)
-// on Android before API 21 malloc_usable_size is exported by this name
 size_t _swift_stdlib_malloc_size(const void *ptr) {
   return dlmalloc_usable_size(const_cast<void *>(ptr));
 }

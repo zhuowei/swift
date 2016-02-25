@@ -17,6 +17,8 @@ import Darwin
 import Glibc
 #endif
 
+// posix_spawn is not available on Android.
+#if !os(Android)
 // swift_posix_spawn isn't available in the public watchOS SDK, we sneak by the
 // unavailable attribute declaration here of the APIs that we need.
 
@@ -46,7 +48,7 @@ func swift_posix_spawn(
   _ attrp: UnsafePointer<posix_spawnattr_t>,
   _ argv: UnsafePointer<UnsafeMutablePointer<Int8>>,
   _ envp: UnsafePointer<UnsafeMutablePointer<Int8>>) -> CInt
-
+#endif
 
 /// Calls POSIX `pipe()`.
 func posixPipe() -> (readFD: CInt, writeFD: CInt) {

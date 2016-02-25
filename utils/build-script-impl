@@ -440,19 +440,6 @@ function set_deployment_target_based_options() {
                 )
             fi
 
-            native_llvm_build=$(build_directory linux-x86_64 llvm)
-            llvm_cmake_options=(
-                -DCMAKE_OSX_SYSROOT:PATH="FIXME THE SYSROOT"
-                -DLLVM_HOST_TRIPLE:STRING="${llvm_host_triple}"
-            )
-
-            if [[ "${llvm_target_arch}" ]] ; then
-                llvm_cmake_options=(
-                    "${llvm_cmake_options[@]}"
-                    -DLLVM_TARGET_ARCH="${llvm_target_arch}"
-                )
-            fi
-
             ;;
         *)
             echo "Unknown compiler deployment target: ${deployment_target}"
@@ -1061,7 +1048,6 @@ COMMON_CMAKE_OPTIONS=(
 )
 
 COMMON_C_FLAGS=""
-COMMON_CXX_FLAGS=""
 
 if [[ "${ENABLE_ASAN}" ]] ; then
     COMMON_CMAKE_OPTIONS=(

@@ -1212,10 +1212,9 @@ toolchains::GenericUnix::constructInvocation(const LinkJobAction &job,
   }
 
   if (getTriple().isAndroid()) {
-    // FIXME: Android: hard-coded paths to arm; needs to fix for arm64, x86
+    // FIXME: These should be set in CMake.
     Arguments.push_back("-target");
     Arguments.push_back("armv7-none-linux-androideabi");
-    //Arguments.push_back(context.Args.MakeArgString(getTriple().str()));
 
     const char* ndkhome = getenv("ANDROID_NDK_HOME");
     assert(ndkhome && "ANDROID_NDK_HOME needs to be set to NDK "
@@ -1232,8 +1231,6 @@ toolchains::GenericUnix::constructInvocation(const LinkJobAction &job,
     Arguments.push_back("-L");
     Arguments.push_back(context.Args.MakeArgString(libcxxpath));
   } else {
-    // rpaths are not supported on Android.
-
     // FIXME: We probably shouldn't be adding an rpath here unless we know ahead
     // of time the standard library won't be copied.
     Arguments.push_back("-Xlinker");

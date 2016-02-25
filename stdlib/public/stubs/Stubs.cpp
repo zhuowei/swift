@@ -41,7 +41,6 @@
 #include "swift/Runtime/Debug.h"
 #include "swift/Basic/Lazy.h"
 
-
 static uint64_t uint64ToStringImpl(char *Buffer, uint64_t Value,
                                    int64_t Radix, bool Uppercase,
                                    bool Negative) {

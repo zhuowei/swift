@@ -429,7 +429,6 @@ static void _initializeCallbacksToInspectDylib() {
   // been loaded.
   _dyld_register_func_for_add_image(_addImageProtocolConformances);
 #elif defined(__ANDROID__)
-  // Android only gained dl_iterate_phdr in API 21, so use /proc/self/maps
   android_iterate_libs(_addImageProtocolConformances);
 #elif defined(__ELF__)
   // Search the loaded dls. Unlike the above, this only searches the already

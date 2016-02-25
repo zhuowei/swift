@@ -25,6 +25,8 @@
 #include "swift/Basic/Demangle.h"
 #include <cxxabi.h>
 #if !defined(__CYGWIN__) && !defined(__ANDROID__)
+// execinfo.h is not available on Android. Checks in this file ensure that
+// fatalError behaves as expected, but without stack traces.
 #include <execinfo.h>
 #endif
 

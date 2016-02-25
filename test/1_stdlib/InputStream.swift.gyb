@@ -18,6 +18,9 @@
 
 // XFAIL: interpret
 
+// FIXME: This test takes too long to complete on Android.
+// UNSUPPORTED: OS=linux-androideabi
+
 import StdlibUnittest
 
 // Also import modules which are used by StdlibUnittest internally. This

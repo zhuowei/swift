@@ -17,8 +17,6 @@ import Darwin
 import Glibc
 #endif
 
-// FIXME: Android: prefix with swift_ in Android version
-
 // swift_posix_spawn isn't available in the public watchOS SDK, we sneak by the
 // unavailable attribute declaration here of the APIs that we need.
 
@@ -67,12 +65,38 @@ func posixPipe() -> (readFD: CInt, writeFD: CInt) {
 /// stderr.
 public func spawnChild(args: [String])
   -> (pid: pid_t, stdinFD: CInt, stdoutFD: CInt, stderrFD: CInt) {
+  let childStdout = posixPipe()
+  let childStdin = posixPipe()
+  let childStderr = posixPipe()
+
+#if os(Android)
+  // posix_spawn isn't available on Android. Instead, we fork and exec.
+  let pid = fork()
+  if pid < 0 {
+    preconditionFailure("fork() failed")
+  } else if pid == 0 {
+    // pid of 0 means we are now in the child process.
+    // Capture the output and execute the program.
+    dup2(childStdout.writeFD, STDOUT_FILENO)
+    dup2(childStdin.readFD, STDIN_FILENO)
+    dup2(childStderr.writeFD, STDERR_FILENO)
+
+    var result: Int32 = 0
+    withArrayOfCStrings([Process.arguments[0]] + args) {
+      result = execve(Process.arguments[0], $0, _getEnviron())
+    }
+
+    if result != 0 {
+      preconditionFailure("execve() failed. errno: \(errno)")
+    }
+    _exit(126)
+  }
+#else
   var fileActions = posix_spawn_file_actions_t()
   if swift_posix_spawn_file_actions_init(&fileActions) != 0 {
     preconditionFailure("swift_posix_spawn_file_actions_init() failed")
   }
 
-  let childStdin = posixPipe()
   // Close the write end of the pipe on the child side.
   if swift_posix_spawn_file_actions_addclose(
     &fileActions, childStdin.writeFD) != 0 {
@@ -85,7 +109,6 @@ public func spawnChild(args: [String])
     preconditionFailure("swift_posix_spawn_file_actions_adddup2() failed")
   }
 
-  let childStdout = posixPipe()
   // Close the read end of the pipe on the child side.
   if swift_posix_spawn_file_actions_addclose(
     &fileActions, childStdout.readFD) != 0 {
@@ -98,7 +121,6 @@ public func spawnChild(args: [String])
     preconditionFailure("swift_posix_spawn_file_actions_adddup2() failed")
   }
 
-  let childStderr = posixPipe()
   // Close the read end of the pipe on the child side.
   if swift_posix_spawn_file_actions_addclose(
     &fileActions, childStderr.readFD) != 0 {
@@ -124,6 +146,7 @@ public func spawnChild(args: [String])
   if swift_posix_spawn_file_actions_destroy(&fileActions) != 0 {
     preconditionFailure("swift_posix_spawn_file_actions_destroy() failed")
   }
+#endif
 
   // Close the read end of the pipe on the parent side.
   if close(childStdin.readFD) != 0 {

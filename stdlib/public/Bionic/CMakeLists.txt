@@ -1,6 +1,5 @@
 set(sources
   module.map
-  spawn.h
 )
 
 set(output_dir "${SWIFTLIB_DIR}/bionic")
@@ -37,7 +36,6 @@ swift_install_in_component(stdlib
 
 add_swift_library(swiftGlibc IS_SDK_OVERLAY
   Glibc.swift
-  posix_spawn.c
   Misc.c
   FILE_DEPENDS copy_bionic_module "${SWIFTLIB_DIR}/bionic"
   TARGET_SDKS ANDROID

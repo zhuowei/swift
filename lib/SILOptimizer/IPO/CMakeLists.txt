@@ -3,8 +3,8 @@ set(IPO_SOURCES
   IPO/CapturePropagation.cpp
   IPO/ClosureSpecializer.cpp
   IPO/DeadFunctionElimination.cpp
+  IPO/EagerSpecializer.cpp
   IPO/ExternalDefsToDecls.cpp
-  IPO/FunctionSignatureOpts.cpp
   IPO/GlobalOpt.cpp
   IPO/GlobalPropertyOpt.cpp
   IPO/LetPropertiesOpts.cpp

@@ -244,6 +244,10 @@ def swift3_migration :
   Flag<["-"], "swift3-migration">,
   HelpText<"Enable Fix-It based migration aids for Swift 3">;
 
+def disable_infer_iuos :
+  Flag<["-"], "disable-infer-iuos">,
+  HelpText<"Disable inferring IUO type for otherwise unconstrained variables">;
+
 def warn_omit_needless_words :
   Flag<["-"], "Womit-needless-words">,
   HelpText<"Warn about needless words in names">;
@@ -292,6 +296,10 @@ def sil_debug_serialization : Flag<["-"], "sil-debug-serialization">,
 def print_inst_counts : Flag<["-"], "print-inst-counts">,
   HelpText<"Before IRGen, count all the various SIL instructions. Must be used "
            "in conjunction with -print-stats.">;
+
+def debug_on_sil : Flag<["-"], "gsil">,
+  HelpText<"Write the SIL into a file and generate debug-info to debug on SIL "
+           " level.">;
 
 def print_llvm_inline_tree : Flag<["-"], "print-llvm-inline-tree">,
   HelpText<"Print the LLVM inline tree.">;

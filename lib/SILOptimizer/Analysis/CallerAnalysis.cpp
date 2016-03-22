@@ -18,38 +18,24 @@
 
 using namespace swift;
 
-static SILFunction *getCallee(FullApplySite &Apply) {
-  SILValue Callee = Apply.getCallee();
-  //  Strip ThinToThickFunctionInst.
-  if (auto TTTF = dyn_cast<ThinToThickFunctionInst>(Callee)) {
-    Callee = TTTF->getOperand();
-  }   
-
-  // Find the target function.
-  auto *FRI = dyn_cast<FunctionRefInst>(Callee);
-  if (!FRI)
-    return nullptr;
-
-  return FRI->getReferencedFunction();
-}
-
 void CallerAnalysis::processFunctionCallSites(SILFunction *F) {
   // Scan the whole module and search Apply sites.
   for (auto &BB : *F) {
     for (auto &II : BB) {
       if (auto Apply = FullApplySite::isa(&II)) {
-        SILFunction *CalleeFn = getCallee(Apply);
+        SILFunction *CalleeFn = Apply.getCalleeFunction();
         if (!CalleeFn)
           continue;
+
         // Update the callee information for this function.
         CallerAnalysisFunctionInfo &CallerInfo
-                             = CallInfo.FindAndConstruct(F).second;
-        CallerInfo.Callees.push_back(CalleeFn);
+                               = CallInfo.FindAndConstruct(F).second;
+        CallerInfo.Callees.insert(CalleeFn);
         
         // Update the callsite information for the callee.
         CallerAnalysisFunctionInfo &CalleeInfo
-                           = CallInfo.FindAndConstruct(CalleeFn).second;
-        CalleeInfo.CallSites[F].push_back(Apply);
+                               = CallInfo.FindAndConstruct(CalleeFn).second;
+        CalleeInfo.Callers.insert(F);
       }   
     }   
   }   
@@ -58,8 +44,9 @@ void CallerAnalysis::processFunctionCallSites(SILFunction *F) {
 void CallerAnalysis::invalidateExistingCalleeRelation(SILFunction *F) {
   CallerAnalysisFunctionInfo &CallerInfo = CallInfo.FindAndConstruct(F).second;
   for (auto Callee : CallerInfo.Callees) {
-    CallerAnalysisFunctionInfo &CalleeInfo = CallInfo.find(Callee)->second;
-    CalleeInfo.CallSites[F].clear();
+    CallerAnalysisFunctionInfo &CalleeInfo
+                                    = CallInfo.FindAndConstruct(Callee).second;
+    CalleeInfo.Callers.remove(F);
   }
 }
 

@@ -487,13 +487,17 @@ void Serializer::writeBlockInfoBlock() {
   BLOCK_RECORD(sil_block, SIL_GLOBALVAR);
   BLOCK_RECORD(sil_block, SIL_INST_CAST);
   BLOCK_RECORD(sil_block, SIL_INIT_EXISTENTIAL);
-  BLOCK_RECORD(sil_block, SIL_WITNESSTABLE);
+  BLOCK_RECORD(sil_block, SIL_WITNESS_TABLE);
   BLOCK_RECORD(sil_block, SIL_WITNESS_METHOD_ENTRY);
   BLOCK_RECORD(sil_block, SIL_WITNESS_BASE_ENTRY);
   BLOCK_RECORD(sil_block, SIL_WITNESS_ASSOC_PROTOCOL);
   BLOCK_RECORD(sil_block, SIL_WITNESS_ASSOC_ENTRY);
+  BLOCK_RECORD(sil_block, SIL_DEFAULT_WITNESS_TABLE);
+  BLOCK_RECORD(sil_block, SIL_DEFAULT_WITNESS_TABLE_ENTRY);
+  BLOCK_RECORD(sil_block, SIL_DEFAULT_WITNESS_TABLE_NO_ENTRY);
   BLOCK_RECORD(sil_block, SIL_GENERIC_OUTER_PARAMS);
   BLOCK_RECORD(sil_block, SIL_INST_WITNESS_METHOD);
+  BLOCK_RECORD(sil_block, SIL_SPECIALIZE_ATTR);
 
   // These layouts can exist in both decl blocks and sil blocks.
 #define BLOCK_RECORD_WITH_NAMESPACE(K, X) emitRecordID(Out, X, #X, nameBuffer)
@@ -527,8 +531,10 @@ void Serializer::writeBlockInfoBlock() {
   BLOCK_RECORD(sil_index_block, SIL_VTABLE_OFFSETS);
   BLOCK_RECORD(sil_index_block, SIL_GLOBALVAR_NAMES);
   BLOCK_RECORD(sil_index_block, SIL_GLOBALVAR_OFFSETS);
-  BLOCK_RECORD(sil_index_block, SIL_WITNESSTABLE_NAMES);
-  BLOCK_RECORD(sil_index_block, SIL_WITNESSTABLE_OFFSETS);
+  BLOCK_RECORD(sil_index_block, SIL_WITNESS_TABLE_NAMES);
+  BLOCK_RECORD(sil_index_block, SIL_WITNESS_TABLE_OFFSETS);
+  BLOCK_RECORD(sil_index_block, SIL_DEFAULT_WITNESS_TABLE_NAMES);
+  BLOCK_RECORD(sil_index_block, SIL_DEFAULT_WITNESS_TABLE_OFFSETS);
 
 #undef BLOCK
 #undef BLOCK_RECORD
@@ -1034,7 +1040,6 @@ void Serializer::writeNormalConformance(
   SmallVector<DeclID, 32> data;
   unsigned numValueWitnesses = 0;
   unsigned numTypeWitnesses = 0;
-  unsigned numDefaultedDefinitions = 0;
 
   // Collect the set of protocols inherited by this conformance.
   SmallVector<ProtocolDecl *, 8> inheritedProtos;
@@ -1067,20 +1072,6 @@ void Serializer::writeNormalConformance(
     return false;
   });
 
-  SmallVector<ValueDecl *, 4> defaultedDefinitions{
-    conformance->getDefaultedDefinitions().begin(),
-    conformance->getDefaultedDefinitions().end()
-  };
-  llvm::array_pod_sort(defaultedDefinitions.begin(), defaultedDefinitions.end(),
-                       [](ValueDecl * const *left, ValueDecl * const *right) {
-    return (*left)->getFullName().compare((*right)->getFullName());
-  });
-
-  for (auto defaulted : defaultedDefinitions) {
-    data.push_back(addDeclRef(defaulted));
-    ++numDefaultedDefinitions;
-  }
-
   unsigned numInheritedConformances = inheritedProtos.size();
   unsigned abbrCode
     = DeclTypeAbbrCodes[NormalProtocolConformanceLayout::Code];
@@ -1090,7 +1081,6 @@ void Serializer::writeNormalConformance(
                                               numValueWitnesses,
                                               numTypeWitnesses,
                                               numInheritedConformances,
-                                              numDefaultedDefinitions,
                                               data);
 
   // Write inherited conformances.
@@ -1283,6 +1273,31 @@ void Serializer::writeMembers(DeclRange members, bool isClass) {
     }
   }
   MembersLayout::emitRecord(Out, ScratchRecord, abbrCode, memberIDs);
+}
+
+void Serializer::writeDefaultWitnessTable(const ProtocolDecl *proto,
+                                   const std::array<unsigned, 256> &abbrCodes) {
+  using namespace decls_block;
+
+  SmallVector<DeclID, 16> witnessIDs;
+
+  unsigned abbrCode = abbrCodes[DefaultWitnessTableLayout::Code];
+  for (auto member : proto->getMembers()) {
+    if (auto *value = dyn_cast<ValueDecl>(member)) {
+      ConcreteDeclRef witness = proto->getDefaultWitness(value);
+      if (!witness)
+        continue;
+
+      DeclID requirementID = addDeclRef(value);
+      DeclID witnessID = addDeclRef(witness.getDecl());
+      witnessIDs.push_back(requirementID);
+      witnessIDs.push_back(witnessID);
+
+      // FIXME: Substitutions
+    }
+  }
+  DefaultWitnessTableLayout::emitRecord(Out, ScratchRecord,
+                                        abbrCode, witnessIDs);
 }
 
 static serialization::AccessorKind getStableAccessorKind(swift::AccessorKind K){
@@ -1783,6 +1798,15 @@ void Serializer::writeDeclAttribute(const DeclAttribute *DA) {
                                                theAttr->isImplicit(),
                                                endOfMessageIndex,
                                                blob);
+    return;
+  }
+  case DAK_Specialize: {
+    auto abbrCode = DeclTypeAbbrCodes[SpecializeDeclAttrLayout::Code];
+    SmallVector<TypeID, 8> typeIDs;
+    for (auto tl : cast<SpecializeAttr>(DA)->getTypeLocs())
+      typeIDs.push_back(addTypeRef(tl.getType()));
+
+    SpecializeDeclAttrLayout::emitRecord(Out, ScratchRecord, abbrCode, typeIDs);
     return;
   }
   }
@@ -2370,6 +2394,7 @@ void Serializer::writeDecl(const Decl *D) {
     writeGenericParams(proto->getGenericParams(), DeclTypeAbbrCodes);
     writeRequirements(proto->getGenericRequirements());
     writeMembers(proto->getMembers(), true);
+    writeDefaultWitnessTable(proto, DeclTypeAbbrCodes);
     break;
   }
 
@@ -2980,7 +3005,7 @@ void Serializer::writeType(Type ty) {
             fnTy->isNoReturn(),
             fnTy->throws(),
             genericParams);
-    
+
     // Write requirements.
     writeRequirements(fnTy->getRequirements());
     break;
@@ -3268,6 +3293,7 @@ void Serializer::writeAllDeclsAndTypes() {
   registerDeclTypeAbbr<FuncLayout>();
   registerDeclTypeAbbr<PatternBindingLayout>();
   registerDeclTypeAbbr<ProtocolLayout>();
+  registerDeclTypeAbbr<DefaultWitnessTableLayout>();
   registerDeclTypeAbbr<PrefixOperatorLayout>();
   registerDeclTypeAbbr<PostfixOperatorLayout>();
   registerDeclTypeAbbr<InfixOperatorLayout>();
@@ -3748,10 +3774,28 @@ static void writeDeclCommentTable(
       if (!VD)
         return true;
 
-      // Skip the decl if it does not have a comment.
       RawComment Raw = VD->getRawComment();
-      if (Raw.Comments.empty() && !GroupContext.isEnable())
-        return true;
+      // When building the stdlib we intend to
+      // serialize unusual comments.  This situation is represented by
+      // GroupContext.isEnable().  In that case, we perform fewer serialization checks.
+      if (!GroupContext.isEnable()) {
+        // Skip the decl if it cannot have a comment.
+        if (!VD->canHaveComment()) {
+          return true;
+        }
+
+        // Skip the decl if it does not have a comment.
+        if (Raw.Comments.empty())
+          return true;
+
+        // Skip the decl if it's not visible to clients.
+        // The use of getEffectiveAccess is unusual here;
+        // we want to take the testability state into account
+        // and emit documentation if and only if they are visible to clients
+        // (which means public ordinarily, but public+internal when testing enabled).
+        if (VD->getEffectiveAccess() != Accessibility::Public)
+          return true;
+      }
 
       // Compute USR.
       {

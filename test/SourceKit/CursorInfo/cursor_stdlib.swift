@@ -18,6 +18,8 @@ func foo2(var a : [S1]) {
   a.append(S1())
 }
 
+import Swift
+
 // RUN: %sourcekitd-test -req=cursor -pos=3:18 %s -- %s %mcp_opt %clang-importer-sdk | FileCheck -check-prefix=CHECK-OVERLAY %s
 // CHECK-OVERLAY:      source.lang.swift.ref.var.global
 // CHECK-OVERLAY-NEXT: NSUTF8StringEncoding
@@ -31,7 +33,7 @@ func foo2(var a : [S1]) {
 
 // RUN: %sourcekitd-test -req=cursor -pos=8:10 %s -- %s %mcp_opt %clang-importer-sdk | FileCheck -check-prefix=CHECK-REPLACEMENT1 %s
 // CHECK-REPLACEMENT1: <Group>Collection/Array</Group>
-// CHECK-REPLACEMENT1: <Declaration>@warn_unused_result(mutable_variant: &quot;sort&quot;) func sorted() -&gt; [<Type usr="s:Si">Int</Type>]</Declaration>
+// CHECK-REPLACEMENT1: <Declaration>func sorted() -&gt; [<Type usr="s:Si">Int</Type>]</Declaration>
 // CHECK-REPLACEMENT1: RELATED BEGIN
 // CHECK-REPLACEMENT1: sorted(@noescape isOrderedBefore _: @noescape (Int, Int) -&gt; Bool) -&gt; [Int]</RelatedName>
 // CHECK-REPLACEMENT1: sorted() -&gt; [Int]</RelatedName>
@@ -52,3 +54,10 @@ func foo2(var a : [S1]) {
 // RUN: %sourcekitd-test -req=cursor -pos=18:8 %s -- %s %mcp_opt %clang-importer-sdk | FileCheck -check-prefix=CHECK-REPLACEMENT4 %s
 // CHECK-REPLACEMENT4: <Group>Collection/Array</Group>
 // CHECK-REPLACEMENT4: <Declaration>mutating func append(newElement: <Type usr="s:V13cursor_stdlib2S1">S1</Type>)</Declaration>
+
+// RUN: %sourcekitd-test -req=cursor -pos=21:10 %s -- %s %mcp_opt %clang-importer-sdk | FileCheck -check-prefix=CHECK-MODULE-GROUP1 %s
+// CHECK-MODULE-GROUP1: MODULE GROUPS BEGIN
+// CHECK-MODULE-GROUP1-DAG: Math
+// CHECK-MODULE-GROUP1-DAG: Collection
+// CHECK-MODULE-GROUP1-DAG: Collection/Array
+// CHECK-MODULE-GROUP1: MODULE GROUPS END
